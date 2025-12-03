@@ -85,6 +85,9 @@ ExportedObj/
 *.opendb
 *.VC.db
 
+# Claude AI configuration
+.claude/
+
 # OS generated
 .DS_Store
 .DS_Store?
