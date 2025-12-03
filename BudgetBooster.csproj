@@ -1,0 +1,124 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Basic Project Settings -->
+    <OutputType>Library</OutputType>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>BudgetBooster</AssemblyName>
+    <RootNamespace>BudgetBooster</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    
+    <!-- Mod Information -->
+    <Version>1.0.0</Version>
+    <Authors>Your Name</Authors>
+    <Company>Your Name</Company>
+    <Product>Budget Booster</Product>
+    <Description>A cheat mod for Cities: Skylines II that automatically keeps your city budget positive!</Description>
+    <Copyright>Copyright © 2025</Copyright>
+    
+    <!-- Output Configuration -->
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+  </PropertyGroup>
+
+  <!-- 
+    IMPORTANT: Update these paths to match your system!
+    
+    The official modding toolchain sets these environment variables:
+    - CSII_INSTALLATIONPATH: Game installation directory
+    - CSII_MANAGEDPATH: Path to game managed DLLs
+    - CSII_LOCALMODSPATH: Path to local mods folder
+    
+    If these aren't set, update the fallback paths below.
+  -->
+  <PropertyGroup>
+    <!-- Try environment variables first, fall back to common paths -->
+    <CitiesPath Condition="'$(CSII_INSTALLATIONPATH)' != ''">$(CSII_INSTALLATIONPATH)</CitiesPath>
+    <CitiesPath Condition="'$(CitiesPath)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Cities Skylines II</CitiesPath>
+    
+    <GameManagedPath Condition="'$(CSII_MANAGEDPATH)' != ''">$(CSII_MANAGEDPATH)</GameManagedPath>
+    <GameManagedPath Condition="'$(GameManagedPath)' == ''">$(CitiesPath)\Cities2_Data\Managed</GameManagedPath>
+    
+    <LocalModsPath Condition="'$(CSII_LOCALMODSPATH)' != ''">$(CSII_LOCALMODSPATH)\$(AssemblyName)</LocalModsPath>
+    <LocalModsPath Condition="'$(LocalModsPath)' == ''">$(LOCALAPPDATA)Low\Colossal Order\Cities Skylines II\Mods\$(AssemblyName)</LocalModsPath>
+  </PropertyGroup>
+
+  <!-- Game DLL References -->
+  <ItemGroup>
+    <!-- Core Game -->
+    <Reference Include="Game">
+      <HintPath>$(GameManagedPath)\Game.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    
+    <!-- Colossal Order Libraries -->
+    <Reference Include="Colossal.Core">
+      <HintPath>$(GameManagedPath)\Colossal.Core.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Colossal.Logging">
+      <HintPath>$(GameManagedPath)\Colossal.Logging.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Colossal.IO.AssetDatabase">
+      <HintPath>$(GameManagedPath)\Colossal.IO.AssetDatabase.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Colossal.UI.Binding">
+      <HintPath>$(GameManagedPath)\Colossal.UI.Binding.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Colossal.Localization">
+      <HintPath>$(GameManagedPath)\Colossal.Localization.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    
+    <!-- Unity Core -->
+    <Reference Include="UnityEngine">
+      <HintPath>$(GameManagedPath)\UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(GameManagedPath)\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    
+    <!-- Unity ECS -->
+    <Reference Include="Unity.Entities">
+      <HintPath>$(GameManagedPath)\Unity.Entities.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.Collections">
+      <HintPath>$(GameManagedPath)\Unity.Collections.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.Mathematics">
+      <HintPath>$(GameManagedPath)\Unity.Mathematics.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+
+    <!-- Harmony (bundled with the game) -->
+    <Reference Include="0Harmony">
+      <HintPath>$(GameManagedPath)\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Deploy mod after successful build -->
+  <Target Name="DeployMod" AfterTargets="Build" Condition="Exists('$(CitiesPath)')">
+    <Message Importance="high" Text="Deploying mod to: $(LocalModsPath)" />
+    <MakeDir Directories="$(LocalModsPath)" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(LocalModsPath)" />
+    <Copy SourceFiles="$(ProjectDir)README.md" DestinationFolder="$(LocalModsPath)" Condition="Exists('$(ProjectDir)README.md')" />
+    <Message Importance="high" Text="Mod deployed successfully!" />
+  </Target>
+
+  <!-- Clean up deployed mod when cleaning -->
+  <Target Name="CleanMod" AfterTargets="Clean" Condition="Exists('$(LocalModsPath)')">
+    <Delete Files="$(LocalModsPath)\$(TargetFileName)" />
+    <Message Importance="high" Text="Cleaned deployed mod" />
+  </Target>
+
+</Project>
