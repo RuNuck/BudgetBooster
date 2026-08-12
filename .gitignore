@@ -74,6 +74,11 @@ ExportedObj/
 # The .csproj file is manually maintained and should be version controlled
 *.unityproj
 *.sln
+# ...except this project's own solution. It is the only file recording that the host project and
+# the reloadable Logic project belong together. Without it a fresh clone resolves `dotnet build`
+# to BudgetBooster.csproj alone, builds the host but not BudgetBooster.Logic.dll, and produces a
+# mod that loads and then logs "Failed to load boost logic" while applying no boosts.
+!BudgetBooster.sln
 *.tmp
 *.user
 *.userprefs
