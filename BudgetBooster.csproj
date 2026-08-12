@@ -8,15 +8,14 @@
     <RootNamespace>BudgetBooster</RootNamespace>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     
     <!-- Mod Information -->
-    <Version>1.0.0</Version>
-    <Authors>Your Name</Authors>
-    <Company>Your Name</Company>
+    <Version>1.2.1</Version>
+    <Authors>Budget Booster Team</Authors>
+    <Company>Budget Booster Team</Company>
     <Product>Budget Booster</Product>
-    <Description>A cheat mod for Cities: Skylines II that automatically keeps your city budget positive!</Description>
-    <Copyright>Copyright © 2025</Copyright>
+    <Description>A cheat mod for Cities: Skylines II (v1.4.x compatible) that automatically keeps your city budget positive with configurable boost modes, notifications, and diagnostics!</Description>
+    <Copyright>Copyright © 2026</Copyright>
     
     <!-- Output Configuration -->
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
@@ -34,8 +33,16 @@
     If these aren't set, update the fallback paths below.
   -->
   <PropertyGroup>
-    <!-- Try environment variables first, fall back to common paths -->
+    <!--
+      Try environment variables first (set by official modding toolchain).
+      If not set, fall back to common Steam install locations.
+      Update the fallback path if your game is installed elsewhere.
+    -->
     <CitiesPath Condition="'$(CSII_INSTALLATIONPATH)' != ''">$(CSII_INSTALLATIONPATH)</CitiesPath>
+    <!-- Common Steam library locations - update if your path differs -->
+    <CitiesPath Condition="'$(CitiesPath)' == '' AND Exists('C:\Program Files (x86)\Steam\steamapps\common\Cities Skylines II')">C:\Program Files (x86)\Steam\steamapps\common\Cities Skylines II</CitiesPath>
+    <CitiesPath Condition="'$(CitiesPath)' == '' AND Exists('D:\SteamLibrary\steamapps\common\Cities Skylines II')">D:\SteamLibrary\steamapps\common\Cities Skylines II</CitiesPath>
+    <CitiesPath Condition="'$(CitiesPath)' == '' AND Exists('G:\SteamLibrary\steamapps\common\Cities Skylines II')">G:\SteamLibrary\steamapps\common\Cities Skylines II</CitiesPath>
     <CitiesPath Condition="'$(CitiesPath)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Cities Skylines II</CitiesPath>
     
     <GameManagedPath Condition="'$(CSII_MANAGEDPATH)' != ''">$(CSII_MANAGEDPATH)</GameManagedPath>
@@ -99,11 +106,6 @@
       <Private>false</Private>
     </Reference>
 
-    <!-- Harmony (bundled with the game) -->
-    <Reference Include="0Harmony">
-      <HintPath>$(GameManagedPath)\0Harmony.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
   </ItemGroup>
 
   <!-- Deploy mod after successful build -->
