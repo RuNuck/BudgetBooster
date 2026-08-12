@@ -17,10 +17,12 @@ namespace BudgetBooster
     {
         // System references
         private CitySystem? _citySystem;
+        private CityServiceBudgetSystem? _budgetSystem;
 
         // State tracking
         private int _tickCounter = 0;
         private int _gameStateLogCounter = 0;
+        private int _expenseReadFailures = 0;
         private bool _isInitialized = false;
         private bool _hasLoggedInitialization = false;
 
@@ -41,14 +43,20 @@ namespace BudgetBooster
         public bool HasValidCitySystem => _citySystem != null;
 
         /// <summary>
-        /// Gets the total number of boosts applied this session (from ModSettings).
+        /// Gets whether city expense data is available. When false, Percentage mode scales BoostAmount
+        /// instead of actual expenses.
         /// </summary>
-        public int TotalBoostsApplied => Mod.Settings?.TotalBoostsApplied ?? 0;
+        public bool HasValidBudgetSystem => _budgetSystem != null;
 
         /// <summary>
-        /// Gets the total money added this session (from ModSettings).
+        /// Gets the total number of boosts applied this session.
         /// </summary>
-        public long TotalMoneyAdded => Mod.Settings?.TotalMoneyAdded ?? 0;
+        public int TotalBoostsApplied => SessionStatistics.TotalBoosts;
+
+        /// <summary>
+        /// Gets the total money added this session.
+        /// </summary>
+        public long TotalMoneyAdded => SessionStatistics.TotalMoneyAdded;
 
         protected override void OnCreate()
         {
@@ -69,6 +77,21 @@ namespace BudgetBooster
                     return;
                 }
                 Mod.Log.Info($"[Budget Booster] CitySystem obtained: {_citySystem.GetType().FullName}");
+
+                // Get reference to the budget system, used by Percentage mode for real expense data.
+                // Optional: if it is unavailable the mod still runs, Percentage mode just scales
+                // BoostAmount instead of actual expenses.
+                Mod.Log.Info("[Budget Booster] Getting CityServiceBudgetSystem reference...");
+                _budgetSystem = World.GetExistingSystemManaged<CityServiceBudgetSystem>();
+
+                if (_budgetSystem == null)
+                {
+                    Mod.Log.Warn("[Budget Booster] CityServiceBudgetSystem is null - Percentage mode will scale BoostAmount instead of city expenses");
+                }
+                else
+                {
+                    Mod.Log.Info($"[Budget Booster] CityServiceBudgetSystem obtained: {_budgetSystem.GetType().FullName}");
+                }
 
                 // Initialize the PlayerMoneyAccessor for reflection-based money access
                 Mod.Log.Info("[Budget Booster] Initializing PlayerMoneyAccessor...");
@@ -223,8 +246,8 @@ namespace BudgetBooster
                     // Get new balance after boost
                     long newBalance = currentMoney + boostInt;
 
-                    // Update settings statistics (single source of truth for UI display)
-                    settings.RecordBoost(boostInt, newBalance);
+                    // Update session statistics (single source of truth for UI display)
+                    SessionStatistics.RecordBoost(boostInt, newBalance);
 
                     // Handle notifications based on settings
                     SendBoostNotification(settings, boostInt, newBalance);
@@ -236,8 +259,8 @@ namespace BudgetBooster
             }
             else
             {
-                // Still update the current balance in settings even when no boost applied
-                settings.CurrentBalance = currentMoney;
+                // Still update the current balance even when no boost applied
+                SessionStatistics.CurrentBalance = currentMoney;
 
                 if (settings.DebugMode && settings.LogBoostCycles)
                 {
@@ -289,7 +312,7 @@ namespace BudgetBooster
                 case ModSettings.NotificationLevel.Detailed:
                     // Always notify with full details including balance
                     shouldNotify = true;
-                    notificationMessage = $"[Budget Booster] Boost applied: +${boostAmount:N0} | New balance: ${newBalance:N0} | Session total: ${settings.TotalMoneyAdded:N0}";
+                    notificationMessage = $"[Budget Booster] Boost applied: +${boostAmount:N0} | New balance: ${newBalance:N0} | Session total: ${SessionStatistics.TotalMoneyAdded:N0}";
                     break;
 
                 default:
@@ -328,28 +351,39 @@ namespace BudgetBooster
         }
 
         /// <summary>
-        /// Gets the total city expenses from the city entity.
+        /// Gets the city's total expenses from CityServiceBudgetSystem.
         /// </summary>
         /// <remarks>
-        /// NOTE: City expense data is not directly accessible in the current Cities: Skylines II
-        /// modding API. The game's ServiceBudget and related systems do not expose expense totals
-        /// in a way that can be queried by mods.
+        /// Expense data is read via the public ICityServiceBudgetSystem interface - the same one the
+        /// in-game budget panel uses. Earlier versions returned a hardcoded 0 on the assumption that
+        /// this was not queryable by mods, which left Percentage mode permanently on its fallback path.
         ///
-        /// As a result, Percentage mode uses a fallback calculation:
-        /// boost = (BoostAmount * BoostPercentage) / 100
-        ///
-        /// This still provides useful scaling behavior - users can adjust BoostAmount as their
-        /// "expected expenses" and BoostPercentage as "how much of that to add".
-        ///
-        /// Future game updates may expose expense data, at which point this method can be updated.
+        /// Returning 0 remains meaningful: it signals "no usable expense figure" and makes
+        /// <see cref="CalculateBoost"/> fall back to scaling BoostAmount instead. That happens when the
+        /// budget system is unavailable, when a read fails, and legitimately in a brand-new city that
+        /// has not incurred any expenses yet.
         /// </remarks>
-        /// <returns>Always returns 0 (expense tracking not available).</returns>
+        /// <returns>Total city expenses, or 0 if unavailable.</returns>
         private long GetTotalCityExpenses()
         {
-            // City expense data is not directly accessible in the current modding API.
-            // The Percentage mode will use the fallback calculation based on BoostAmount.
-            // TODO: Monitor future API updates for expense tracking support.
-            return 0;
+            if (_budgetSystem == null)
+                return 0;
+
+            try
+            {
+                int expenses = _budgetSystem.GetTotalExpenses();
+                return expenses > 0 ? expenses : 0;
+            }
+            catch (Exception ex)
+            {
+                // Log occasionally rather than every cycle, matching the money read behaviour.
+                _expenseReadFailures++;
+                if (_expenseReadFailures % 100 == 1)
+                {
+                    Mod.Log.Warn($"[Budget Booster] Failed to read city expenses: {ex.Message}");
+                }
+                return 0;
+            }
         }
 
         /// <summary>
@@ -472,12 +506,13 @@ namespace BudgetBooster
 
                 Mod.Log.Info($@"[Budget Booster] === Game State Report ===
   Current Balance: ${currentMoney:N0}
-  City Expenses: ${totalExpenses:N0}{(totalExpenses == 0 ? " (unavailable)" : "")}
-  Session Boosts Applied: {settings.TotalBoostsApplied}
-  Session Money Added: ${settings.TotalMoneyAdded:N0}
-  Last Boost: ${settings.LastBoostAmount:N0}
+  City Expenses: ${totalExpenses:N0}{(totalExpenses == 0 ? (_budgetSystem == null ? " (system unavailable)" : " (none recorded yet)") : "")}
+  Session Boosts Applied: {SessionStatistics.TotalBoosts}
+  Session Money Added: ${SessionStatistics.TotalMoneyAdded:N0}
+  Last Boost: ${SessionStatistics.LastBoostAmount:N0}
   System Status: {(_isInitialized ? "Initialized" : "Not Initialized")}
   CitySystem: {(_citySystem != null ? "Available" : "Null")}
+  BudgetSystem: {(_budgetSystem != null ? "Available" : "Null")}
   Notifications: {(settings.EnableNotifications ? settings.NotificationVerbosity.ToString() : "Disabled")}
 ================================");
             }
@@ -526,8 +561,17 @@ namespace BudgetBooster
                         }
                     }
 
-                    // Note: City expense tracking is not available in current API
-                    Mod.Log.Info("[Budget Booster] City Expenses API: Not available (Percentage mode uses fallback)");
+                    // City expense data (used by Percentage mode)
+                    if (_budgetSystem == null)
+                    {
+                        Mod.Log.Info("[Budget Booster] City Expenses API: Unavailable (Percentage mode scales BoostAmount)");
+                    }
+                    else
+                    {
+                        long expenses = GetTotalCityExpenses();
+                        Mod.Log.Info($"[Budget Booster] City Expenses API: Working - Total expenses: ${expenses:N0}");
+                        Mod.Log.Info($"[Budget Booster] Expense Read Failures: {_expenseReadFailures:N0}");
+                    }
                 }
             }
 
@@ -535,8 +579,8 @@ namespace BudgetBooster
             Mod.Log.Info(PlayerMoneyAccessor.GetDiagnosticSummary());
 
             // Session statistics
-            Mod.Log.Info($"[Budget Booster] Session Boosts Applied: {settings.TotalBoostsApplied}");
-            Mod.Log.Info($"[Budget Booster] Session Money Added: ${settings.TotalMoneyAdded:N0}");
+            Mod.Log.Info($"[Budget Booster] Session Boosts Applied: {SessionStatistics.TotalBoosts}");
+            Mod.Log.Info($"[Budget Booster] Session Money Added: ${SessionStatistics.TotalMoneyAdded:N0}");
             Mod.Log.Info($"[Budget Booster] Current Tick Counter: {_tickCounter}");
 
             // Settings summary
@@ -580,25 +624,16 @@ namespace BudgetBooster
         /// </summary>
         public string GetSystemDiagnostics()
         {
-            var settings = Mod.Settings;
             return $@"BudgetBoosterSystem Status:
   Initialized: {_isInitialized}
   CitySystem: {(_citySystem != null ? "Valid" : "Null")}
-  Total Boosts: {settings?.TotalBoostsApplied ?? 0}
-  Total Money Added: ${settings?.TotalMoneyAdded ?? 0:N0}";
+  Total Boosts: {SessionStatistics.TotalBoosts}
+  Total Money Added: ${SessionStatistics.TotalMoneyAdded:N0}";
         }
 
         protected override void OnDestroy()
         {
-            var settings = Mod.Settings;
-            if (settings != null)
-            {
-                Mod.Log.Info($"[Budget Booster] BudgetBoosterSystem destroyed. Session stats: {settings.TotalBoostsApplied} boosts, ${settings.TotalMoneyAdded:N0} added.");
-            }
-            else
-            {
-                Mod.Log.Info("[Budget Booster] BudgetBoosterSystem destroyed.");
-            }
+            Mod.Log.Info($"[Budget Booster] BudgetBoosterSystem destroyed. Session stats: {SessionStatistics.TotalBoosts} boosts, ${SessionStatistics.TotalMoneyAdded:N0} added.");
             base.OnDestroy();
         }
     }

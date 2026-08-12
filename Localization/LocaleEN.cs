@@ -65,7 +65,7 @@ namespace BudgetBooster.Localization
                 { _settings.GetOptionDescLocaleID(nameof(ModSettings.TargetSurplus)), "Minimum balance to maintain. When your balance falls below this, the Boost Amount is added to bring you back up." },
 
                 { _settings.GetOptionLabelLocaleID(nameof(ModSettings.BoostPercentage)), "Boost Percentage" },
-                { _settings.GetOptionDescLocaleID(nameof(ModSettings.BoostPercentage)), "Percentage of Boost Amount to add each cycle (e.g., 10% of $100,000 = $10,000 boost). Set Boost Amount as your 'expected expenses' base." },
+                { _settings.GetOptionDescLocaleID(nameof(ModSettings.BoostPercentage)), "Percentage of your city's total expenses to add each cycle (e.g., 10% of $100,000 expenses = $10,000 boost). If expense data is unavailable, this scales Boost Amount instead." },
 
                 // Notification Settings
                 { _settings.GetOptionLabelLocaleID(nameof(ModSettings.EnableNotifications)), "Enable Notifications" },

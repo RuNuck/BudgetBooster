@@ -315,28 +315,28 @@ namespace BudgetBooster
         /// </summary>
         [SettingsUISection(SectionMain, GroupStatistics)]
         [SettingsUIDisableByCondition(typeof(ModSettings), nameof(AlwaysTrue))]
-        public string TotalBoostsDisplay => $"{TotalBoostsApplied:N0} boosts";
+        public string TotalBoostsDisplay => $"{SessionStatistics.TotalBoosts:N0} boosts";
 
         /// <summary>
         /// Total money added this session.
         /// </summary>
         [SettingsUISection(SectionMain, GroupStatistics)]
         [SettingsUIDisableByCondition(typeof(ModSettings), nameof(AlwaysTrue))]
-        public string TotalMoneyAddedDisplay => $"${TotalMoneyAdded:N0}";
+        public string TotalMoneyAddedDisplay => $"${SessionStatistics.TotalMoneyAdded:N0}";
 
         /// <summary>
         /// Last boost amount.
         /// </summary>
         [SettingsUISection(SectionMain, GroupStatistics)]
         [SettingsUIDisableByCondition(typeof(ModSettings), nameof(AlwaysTrue))]
-        public string LastBoostAmountDisplay => LastBoostAmount > 0 ? $"${LastBoostAmount:N0}" : "No boosts yet";
+        public string LastBoostAmountDisplay => SessionStatistics.LastBoostAmount > 0 ? $"${SessionStatistics.LastBoostAmount:N0}" : "No boosts yet";
 
         /// <summary>
         /// Current balance (last known).
         /// </summary>
         [SettingsUISection(SectionMain, GroupStatistics)]
         [SettingsUIDisableByCondition(typeof(ModSettings), nameof(AlwaysTrue))]
-        public string CurrentBalanceDisplay => $"${CurrentBalance:N0}";
+        public string CurrentBalanceDisplay => $"${SessionStatistics.CurrentBalance:N0}";
 
         /// <summary>
         /// Button to reset statistics.
@@ -347,7 +347,7 @@ namespace BudgetBooster
         {
             set
             {
-                ResetStats();
+                SessionStatistics.Reset();
                 Mod.Log.Info("[Budget Booster] Statistics have been reset.");
             }
         }
@@ -357,39 +357,9 @@ namespace BudgetBooster
         /// </summary>
         public bool AlwaysTrue => true;
 
-        // Statistics backing fields (not persisted, session-only)
-        [SettingsUIHidden]
-        public int TotalBoostsApplied { get; set; } = 0;
-
-        [SettingsUIHidden]
-        public long TotalMoneyAdded { get; set; } = 0;
-
-        [SettingsUIHidden]
-        public long LastBoostAmount { get; set; } = 0;
-
-        [SettingsUIHidden]
-        public long CurrentBalance { get; set; } = 0;
-
-        /// <summary>
-        /// Resets session statistics.
-        /// </summary>
-        public void ResetStats()
-        {
-            TotalBoostsApplied = 0;
-            TotalMoneyAdded = 0;
-            LastBoostAmount = 0;
-        }
-
-        /// <summary>
-        /// Records a boost in the statistics.
-        /// </summary>
-        public void RecordBoost(long boostAmount, long newBalance)
-        {
-            TotalBoostsApplied++;
-            TotalMoneyAdded += boostAmount;
-            LastBoostAmount = boostAmount;
-            CurrentBalance = newBalance;
-        }
+        // Statistics live in SessionStatistics, not here. A public get/set property on a ModSetting is
+        // persisted to BudgetBooster.coc regardless of [SettingsUIHidden], which is what previously made
+        // these session counters survive restarts and report lifetime totals.
 
         // ============================================================
         // ADVANCED SETTINGS
@@ -527,8 +497,9 @@ namespace BudgetBooster
             LogGameState = true;
             DiagnosticsRequested = false;
 
-            // Reset statistics
-            ResetStats();
+            // Statistics are session state, not settings, and are deliberately not touched here.
+            // LoadSettings constructs throwaway default instances, so resetting them from SetDefaults
+            // would wipe live counters mid-session. Use the "Reset Statistics" button instead.
         }
 
         /// <summary>
@@ -564,11 +535,7 @@ namespace BudgetBooster
             LogBoostCycles = source.LogBoostCycles;
             LogGameState = source.LogGameState;
 
-            // Statistics
-            TotalBoostsApplied = source.TotalBoostsApplied;
-            TotalMoneyAdded = source.TotalMoneyAdded;
-            LastBoostAmount = source.LastBoostAmount;
-            CurrentBalance = source.CurrentBalance;
+            // Statistics are not settings and are not carried across - see SessionStatistics.
         }
 
         /// <summary>
@@ -595,11 +562,7 @@ namespace BudgetBooster
                 && UpdateInterval == other.UpdateInterval
                 && DebugMode == other.DebugMode
                 && LogBoostCycles == other.LogBoostCycles
-                && LogGameState == other.LogGameState
-                && TotalBoostsApplied == other.TotalBoostsApplied
-                && TotalMoneyAdded == other.TotalMoneyAdded
-                && LastBoostAmount == other.LastBoostAmount
-                && CurrentBalance == other.CurrentBalance;
+                && LogGameState == other.LogGameState;
         }
 
         /// <summary>
@@ -709,10 +672,10 @@ Notification Verbosity: {NotificationVerbosity}
 Minimal Threshold: ${MinimalNotificationThreshold:N0}
 
 --- Session Statistics ---
-Total Boosts Applied: {TotalBoostsApplied:N0}
-Total Money Added: ${TotalMoneyAdded:N0}
-Last Boost Amount: ${LastBoostAmount:N0}
-Current Balance: ${CurrentBalance:N0}
+Total Boosts Applied: {SessionStatistics.TotalBoosts:N0}
+Total Money Added: ${SessionStatistics.TotalMoneyAdded:N0}
+Last Boost Amount: ${SessionStatistics.LastBoostAmount:N0}
+Current Balance: ${SessionStatistics.CurrentBalance:N0}
 
 --- Debug Settings ---
 Debug Mode: {DebugMode}

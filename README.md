@@ -94,7 +94,7 @@ After installing, go to **Options → Mods → Budget Booster** to access the se
 - Great for creative building
 
 **Percentage** (Scaling mode)
-- Queries actual city expenses from CityServiceBudgets
+- Queries actual city expenses from `CityServiceBudgetSystem`
 - Boost calculated as percentage of total city expenses
 - Larger cities with higher expenses get proportionally more
 - Falls back to Boost Amount if expense data unavailable
@@ -178,8 +178,16 @@ A:
 **Q: What does "Update Interval" mean?**
 A: It's how often (in game ticks) the mod checks your balance and applies boosts. Lower numbers = more frequent checks. 256 ticks ≈ 1 in-game day.
 
-**Q: Why isn't Percentage mode using my actual city expenses?**
-A: The current CS2 modding API doesn't expose city expense data. Percentage mode uses your Boost Amount as a base for the percentage calculation instead. This is noted in the diagnostics.
+**Q: Is Percentage mode using my actual city expenses?**
+A: Yes, as of v1.3.0. It reads your city's total expenses from the game's `CityServiceBudgetSystem` —
+the same source the in-game budget panel uses. Earlier versions always fell back to scaling your Boost
+Amount instead. If expenses read as $0 (a brand-new city, or the budget system being unavailable), it
+still falls back to that calculation. **Run Diagnostics** reports which path is in use.
+
+**Q: Why did my statistics reset to zero?**
+A: Session statistics count only the current game session and start at zero each time you launch
+the game. Before v1.2.2 they were saved to disk by mistake, so they accumulated forever while the
+UI described them as per-session. Your settings are unaffected — only the counters reset.
 
 **Q: My settings aren't saving!**
 A: Check that you have write permissions to:
@@ -319,6 +327,13 @@ MIT License - Free to use, modify, and distribute!
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md) for the full history.
+
+### v1.3.0
+- **Added**: Percentage mode now scales with your city's real expenses via `CityServiceBudgetSystem`. It previously always used a hardcoded fallback, so it never actually scaled with the city.
+- **Fixed**: Docs and tooltip no longer claim city expense data is inaccessible to mods.
+
+### v1.2.2
+- **Fixed**: "Session Statistics" persisted to disk and reported lifetime totals under session labels. The counters now live in memory and reset each time you launch the game.
 
 ### v1.2.1
 - **Fixed**: Settings were written to a file named `BudgetBooster` but loaded from a section named `Budget Booster`, leaving two competing sections in `BudgetBooster.coc`. Both now use the single `BudgetBooster` identifier.

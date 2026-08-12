@@ -5,6 +5,51 @@ All notable changes to Budget Booster are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-08-12
+
+### Added
+- **Percentage mode now uses real city expenses.** `GetTotalCityExpenses()` returned a hardcoded `0`,
+  so the mode silently took its fallback path on every cycle since it was introduced — it never once
+  scaled with a city. It now reads `GetTotalExpenses()` from `Game.Simulation.CityServiceBudgetSystem`,
+  the public `ICityServiceBudgetSystem` the in-game budget panel uses.
+- `HasValidBudgetSystem` on `BudgetBoosterSystem`, and expense figures plus read-failure counts in the
+  diagnostics report.
+
+### Fixed
+- Documentation and the in-game Boost Percentage tooltip claimed city expense data was not exposed to
+  mods. It is, and has been.
+
+### Notes
+- The budget system is treated as optional. If it cannot be obtained, or a read throws, or the city has
+  genuinely recorded no expenses yet, Percentage mode falls back to scaling Boost Amount exactly as
+  before. **Run Diagnostics** reports which path is active.
+- Existing Percentage mode users will see larger boosts than before, because the calculation now scales
+  against real expenses rather than the Boost Amount slider. Lower Boost Percentage to compensate.
+
+## [1.2.2] - 2026-08-12
+
+### Fixed
+- **"Session Statistics" reported lifetime totals.** The four counters were public get/set
+  properties on `ModSettings`, and every such property is written to `BudgetBooster.coc` —
+  `[SettingsUIHidden]` only hides a property from the options UI, it does not opt out of
+  serialization. The panel therefore accumulated across restarts while labelled "this session"
+  and "since the game started". Observed in the wild: 95 boosts / $163,267,755 persisted in a
+  session that applied exactly one boost.
+
+### Changed
+- Moved `TotalBoostsApplied`, `TotalMoneyAdded`, `LastBoostAmount`, and `CurrentBalance` out of
+  `ModSettings` into a new in-memory `SessionStatistics` class. Being static, they now last for
+  the lifetime of the process, which is what the UI has always claimed.
+- `SetDefaults()` no longer resets statistics. `LoadSettings` constructs throwaway default
+  instances, so resetting from there would have wiped live counters mid-session. The
+  "Reset Statistics" button remains the way to clear them.
+- The v1.2.1 settings migration no longer carries statistics across, since they are no longer
+  settings.
+
+### Notes
+- Statistics carried over from earlier versions are not preserved; the first launch of 1.2.2
+  starts the counters at zero. The stale keys are dropped from the `.coc` file on first save.
+
 ## [1.2.1] - 2026-08-12
 
 ### Fixed

@@ -16,7 +16,7 @@ namespace BudgetBooster
     public class Mod : IMod
     {
         public const string ModName = "Budget Booster";
-        public const string ModVersion = "1.2.1";
+        public const string ModVersion = "1.3.0";
 
         public static readonly ILog Log = LogManager.GetLogger(ModName);
 
@@ -183,7 +183,7 @@ namespace BudgetBooster
                 {
                     _settings.CopyFrom(legacy);
                     Log.Info($"[{ModName}] Migrated settings from legacy section '{ModSettings.LegacySettingsSection}' to '{ModSettings.SettingsSection}'");
-                    Log.Info($"[{ModName}] Migrated values - Enabled: {_settings.Enabled}, Mode: {_settings.BoostMode}, Boost: ${_settings.BoostAmount:N0}, Boosts recorded: {_settings.TotalBoostsApplied:N0}");
+                    Log.Info($"[{ModName}] Migrated values - Enabled: {_settings.Enabled}, Mode: {_settings.BoostMode}, Boost: ${_settings.BoostAmount:N0}, Target: ${_settings.TargetSurplus:N0}");
                 }
 
                 _settings.SettingsVersion = ModSettings.CurrentSettingsVersion;
@@ -267,6 +267,9 @@ Settings Available: {(Settings != null ? "Yes" : "No")}
 
                 // Reset patch tracking
                 Patches.Reset();
+
+                // Clear session statistics so a mod reload starts from zero
+                SessionStatistics.Reset();
 
                 IsLoaded = false;
                 LoadError = null;
