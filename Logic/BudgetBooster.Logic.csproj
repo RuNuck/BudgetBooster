@@ -1,0 +1,97 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>BudgetBooster.Logic</AssemblyName>
+    <RootNamespace>BudgetBooster.Logic</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+
+    <Version>1.4.0</Version>
+    <Product>Budget Booster Logic</Product>
+    <Description>Reloadable boost logic for Budget Booster. Loaded from bytes by the host assembly so it can be swapped without restarting the game.</Description>
+    <Copyright>Copyright © 2026</Copyright>
+
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+  </PropertyGroup>
+
+  <!-- Same game path resolution as the host project. -->
+  <PropertyGroup>
+    <CitiesPath Condition="'$(CSII_INSTALLATIONPATH)' != ''">$(CSII_INSTALLATIONPATH)</CitiesPath>
+    <CitiesPath Condition="'$(CitiesPath)' == '' AND Exists('C:\Program Files (x86)\Steam\steamapps\common\Cities Skylines II')">C:\Program Files (x86)\Steam\steamapps\common\Cities Skylines II</CitiesPath>
+    <CitiesPath Condition="'$(CitiesPath)' == '' AND Exists('D:\SteamLibrary\steamapps\common\Cities Skylines II')">D:\SteamLibrary\steamapps\common\Cities Skylines II</CitiesPath>
+    <CitiesPath Condition="'$(CitiesPath)' == '' AND Exists('G:\SteamLibrary\steamapps\common\Cities Skylines II')">G:\SteamLibrary\steamapps\common\Cities Skylines II</CitiesPath>
+    <CitiesPath Condition="'$(CitiesPath)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Cities Skylines II</CitiesPath>
+
+    <GameManagedPath Condition="'$(CSII_MANAGEDPATH)' != ''">$(CSII_MANAGEDPATH)</GameManagedPath>
+    <GameManagedPath Condition="'$(GameManagedPath)' == ''">$(CitiesPath)\Cities2_Data\Managed</GameManagedPath>
+
+    <LocalModsPath Condition="'$(CSII_LOCALMODSPATH)' != ''">$(CSII_LOCALMODSPATH)\BudgetBooster</LocalModsPath>
+    <LocalModsPath Condition="'$(LocalModsPath)' == ''">$(LOCALAPPDATA)Low\Colossal Order\Cities Skylines II\Mods\BudgetBooster</LocalModsPath>
+  </PropertyGroup>
+
+  <!--
+    Reference the host for IBoostLogic, IBoostContext and ModSettings.
+    Private=false is essential: the host DLL is deployed by its own project and loaded by the game's
+    mod loader. Copying it here would place a second copy alongside the logic assembly.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\BudgetBooster.csproj">
+      <Private>false</Private>
+    </ProjectReference>
+  </ItemGroup>
+
+  <!-- Game references needed to resolve ModSettings' base types at compile time. -->
+  <ItemGroup>
+    <Reference Include="Game">
+      <HintPath>$(GameManagedPath)\Game.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Colossal.Core">
+      <HintPath>$(GameManagedPath)\Colossal.Core.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Colossal.Logging">
+      <HintPath>$(GameManagedPath)\Colossal.Logging.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Colossal.IO.AssetDatabase">
+      <HintPath>$(GameManagedPath)\Colossal.IO.AssetDatabase.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Colossal.UI.Binding">
+      <HintPath>$(GameManagedPath)\Colossal.UI.Binding.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Colossal.Localization">
+      <HintPath>$(GameManagedPath)\Colossal.Localization.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.Entities">
+      <HintPath>$(GameManagedPath)\Unity.Entities.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.Collections">
+      <HintPath>$(GameManagedPath)\Unity.Collections.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.Mathematics">
+      <HintPath>$(GameManagedPath)\Unity.Mathematics.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!--
+    Deploy next to the host DLL. LogicHost resolves this file relative to the host assembly location,
+    so the two must sit in the same folder.
+  -->
+  <Target Name="DeployLogic" AfterTargets="Build" Condition="Exists('$(CitiesPath)')">
+    <Message Importance="high" Text="Deploying reloadable logic to: $(LocalModsPath)" />
+    <MakeDir Directories="$(LocalModsPath)" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(LocalModsPath)" />
+    <Message Importance="high" Text="Logic deployed - use 'Reload Boost Logic' in mod settings to pick it up without restarting" />
+  </Target>
+
+</Project>

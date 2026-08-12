@@ -16,7 +16,7 @@ namespace BudgetBooster
     public class Mod : IMod
     {
         public const string ModName = "Budget Booster";
-        public const string ModVersion = "1.3.0";
+        public const string ModVersion = "1.4.0";
 
         public static readonly ILog Log = LogManager.GetLogger(ModName);
 
@@ -118,6 +118,14 @@ namespace BudgetBooster
 
                 // Set static settings reference for BudgetBoosterSystem to use
                 Settings = _settings;
+
+                // Load the reloadable boost logic. This is the only load path - release builds use it
+                // too, so the code that ships is the code that gets exercised during development.
+                if (!LogicHost.LoadInitial(this))
+                {
+                    Log.Error($"[{ModName}] Failed to load boost logic: {LogicHost.LastError}");
+                    Log.Error($"[{ModName}] The mod will run but apply no boosts until {LogicHost.LogicAssemblyFileName} loads.");
+                }
 
                 // Register localization
                 try
@@ -270,6 +278,9 @@ Settings Available: {(Settings != null ? "Yes" : "No")}
 
                 // Clear session statistics so a mod reload starts from zero
                 SessionStatistics.Reset();
+
+                // Drop the logic reference. The assembly itself stays loaded - Mono cannot unload it.
+                LogicHost.Reset();
 
                 IsLoaded = false;
                 LoadError = null;

@@ -440,6 +440,27 @@ namespace BudgetBooster
         }
 
         /// <summary>
+        /// Reloads BudgetBooster.Logic.dll from disk without restarting the game.
+        /// The new build is staged here and swapped in at the top of the next simulation update.
+        /// </summary>
+        [SettingsUISection(SectionMain, GroupDebug)]
+        [SettingsUIButton]
+        public bool ReloadBoostLogic
+        {
+            set
+            {
+                if (LogicHost.RequestReload())
+                {
+                    Mod.Log.Info("[Budget Booster] Boost logic reload staged - applies on the next update");
+                }
+                else
+                {
+                    Mod.Log.Warn($"[Budget Booster] Boost logic reload failed: {LogicHost.LastError}");
+                }
+            }
+        }
+
+        /// <summary>
         /// Internal flag to signal diagnostics should run.
         /// </summary>
         [SettingsUIHidden]

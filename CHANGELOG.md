@@ -5,6 +5,35 @@ All notable changes to Budget Booster are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-08-12
+
+### Added
+- **Hot-reloadable boost logic.** The boost calculation now lives in a separate
+  `BudgetBooster.Logic.dll`, loaded from a byte array by `LogicHost`. Rebuild it and press
+  **Reload Boost Logic** in the mod's Debug settings to swap the calculation while the game runs,
+  without restarting or reloading your city. Settings and session statistics are untouched.
+- Raw API values in the diagnostics report (`Raw GetTotalExpenses()`, `Raw GetTotalIncome()`) and in
+  the periodic game state report. Sign conventions are the most common source of readings that look
+  plausible but are wrong — the v1.3.0 expense bug survived a clean build and a success log line
+  precisely because only the interpreted value was ever printed.
+
+### Changed
+- Split responsibilities along the reload seam: the host owns *plumbing* (ECS lookups, reflection,
+  raw API calls) and the logic assembly owns *interpretation* (sign handling, fallbacks, arithmetic).
+  Every defect found so far has been interpretation, so this puts that class of bug on the
+  reloadable side.
+- The host has no fallback boost calculation. If logic is missing or throws, no boost is applied and
+  it says so loudly. A silent host-side fallback would mask a broken logic build behind plausible
+  behaviour.
+
+### Notes
+- The byte-load is the **only** load path — release builds use it too. A development-only loading
+  route that differs from the shipped one is how a bug survives testing.
+- Mono cannot unload assemblies, so each reload leaks the previous copy (a few tens of KB). This is
+  irrelevant next to not restarting a city, and does not affect players, who load once.
+- Changes to `IBoostLogic`, `IBoostContext`, `ModSettings`, localization, or the ECS system still
+  require a full restart. Only the logic assembly's internals are reloadable.
+
 ## [1.3.0] - 2026-08-12
 
 ### Added

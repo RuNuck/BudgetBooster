@@ -23,14 +23,14 @@ namespace BudgetBooster
         private int _tickCounter = 0;
         private int _gameStateLogCounter = 0;
         private int _expenseReadFailures = 0;
+        private bool _hasLoggedMissingLogic = false;
         private bool _isInitialized = false;
         private bool _hasLoggedInitialization = false;
 
         // Constants for game state logging (every ~10 update intervals in debug mode)
         private const int GameStateLogFrequency = 10;
 
-        // Minimum boost amount for Percentage mode (ensures meaningful contribution)
-        private const int MinimumPercentageModeBoost = 10000;
+        // Boost calculation constants now live in the reloadable logic assembly (BoostLogic).
 
         /// <summary>
         /// Gets whether the system is properly initialized and ready to function.
@@ -154,6 +154,11 @@ namespace BudgetBooster
                     return;
                 }
 
+                // Apply any queued logic swap here, at the top of the update and before any cycle
+                // work begins. Reloads are requested from the settings UI on a different thread, so
+                // this is the safe point where nothing is mid-flight.
+                LogicHost.ApplyPendingSwap();
+
                 // Only run on configured interval to avoid performance impact
                 _tickCounter++;
                 if (_tickCounter < settings.UpdateInterval)
@@ -225,8 +230,8 @@ namespace BudgetBooster
             // Get current balance
             long currentMoney = GetCurrentMoney(playerMoney);
 
-            // Calculate boost based on mode
-            long boostAmount = CalculateBoost(currentMoney, settings);
+            // Delegate the decision to the reloadable logic assembly.
+            long boostAmount = CalculateBoostViaLogic(currentMoney, settings);
 
             // Log debug info for this cycle
             if (settings.DebugMode && settings.LogBoostCycles)
@@ -351,133 +356,122 @@ namespace BudgetBooster
         }
 
         /// <summary>
-        /// Gets the city's total expenses from CityServiceBudgetSystem.
+        /// Reads the raw expense figure from CityServiceBudgetSystem, with no interpretation.
         /// </summary>
         /// <remarks>
-        /// Expense data is read via the public ICityServiceBudgetSystem interface - the same one the
-        /// in-game budget panel uses. Earlier versions returned a hardcoded 0 on the assumption that
-        /// this was not queryable by mods, which left Percentage mode permanently on its fallback path.
-        ///
-        /// Returning 0 remains meaningful: it signals "no usable expense figure" and makes
-        /// <see cref="CalculateBoost"/> fall back to scaling BoostAmount instead. That happens when the
-        /// budget system is unavailable, when a read fails, and legitimately in a brand-new city that
-        /// has not incurred any expenses yet.
+        /// The value is returned exactly as the game reports it, including its sign. Interpreting it
+        /// is the reloadable logic assembly's job - see BoostLogic.GetTotalExpenses. Keeping raw game
+        /// data on the host side and interpretation on the reloadable side is what makes this class of
+        /// bug fixable without a restart.
         /// </remarks>
-        /// <returns>Total city expenses, or 0 if unavailable.</returns>
-        private long GetTotalCityExpenses()
+        /// <returns>True if a value was read.</returns>
+        private bool TryReadRawExpenses(out int rawExpenses)
         {
+            rawExpenses = 0;
+
             if (_budgetSystem == null)
-                return 0;
+                return false;
 
             try
             {
-                int expenses = _budgetSystem.GetTotalExpenses();
-                return expenses > 0 ? expenses : 0;
+                rawExpenses = _budgetSystem.GetTotalExpenses();
+                return true;
             }
             catch (Exception ex)
             {
-                // Log occasionally rather than every cycle, matching the money read behaviour.
                 _expenseReadFailures++;
                 if (_expenseReadFailures % 100 == 1)
                 {
                     Mod.Log.Warn($"[Budget Booster] Failed to read city expenses: {ex.Message}");
                 }
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Reads the raw income figure from CityServiceBudgetSystem, with no interpretation.
+        /// </summary>
+        private bool TryReadRawIncome(out int rawIncome)
+        {
+            rawIncome = 0;
+
+            if (_budgetSystem == null)
+                return false;
+
+            try
+            {
+                rawIncome = _budgetSystem.GetTotalIncome();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _expenseReadFailures++;
+                if (_expenseReadFailures % 100 == 1)
+                {
+                    Mod.Log.Warn($"[Budget Booster] Failed to read city income: {ex.Message}");
+                }
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Hands the decision to the reloadable logic assembly.
+        /// </summary>
+        /// <remarks>
+        /// If no logic is loaded, or it throws, this returns 0 rather than guessing. A silent host-side
+        /// fallback would defeat the purpose: it would mask a broken logic build behind plausible
+        /// behaviour, which is precisely the failure mode this split exists to avoid.
+        /// </remarks>
+        private long CalculateBoostViaLogic(long currentMoney, ModSettings settings)
+        {
+            var logic = LogicHost.Current;
+
+            if (logic == null)
+            {
+                if (!_hasLoggedMissingLogic)
+                {
+                    _hasLoggedMissingLogic = true;
+                    Mod.Log.Error($"[Budget Booster] No boost logic loaded - no boosts will be applied. {LogicHost.LastError}");
+                }
+                return 0;
+            }
+
+            try
+            {
+                return logic.CalculateBoost(new BoostContext(this, currentMoney, settings));
+            }
+            catch (Exception ex)
+            {
+                Mod.Log.Error($"[Budget Booster] Boost logic threw, skipping this cycle: {ex.Message}");
                 return 0;
             }
         }
 
         /// <summary>
-        /// Calculates how much money to add based on current settings and balance.
+        /// Per-cycle view of raw game data handed to the reloadable logic.
         /// </summary>
-        private long CalculateBoost(long currentMoney, ModSettings settings)
+        private sealed class BoostContext : IBoostContext
         {
-            // Validate settings before calculation
-            if (settings.BoostAmount <= 0)
+            private readonly BudgetBoosterSystem _system;
+
+            public BoostContext(BudgetBoosterSystem system, long currentMoney, ModSettings settings)
             {
-                Mod.Log.Warn("[Budget Booster] BoostAmount is invalid (<=0), skipping boost");
-                return 0;
+                _system = system;
+                CurrentMoney = currentMoney;
+                Settings = settings;
             }
 
-            long boost = 0;
+            public long CurrentMoney { get; }
 
-            switch (settings.BoostMode)
-            {
-                case ModSettings.BoostModeType.AutoBalance:
-                    // Only boost if we're below the target surplus
-                    if (currentMoney < settings.TargetSurplus)
-                    {
-                        // Calculate how much we need to reach target + boost
-                        boost = settings.TargetSurplus - currentMoney + settings.BoostAmount;
-                    }
-                    break;
+            public ModSettings Settings { get; }
 
-                case ModSettings.BoostModeType.FixedBoost:
-                    // Always add the fixed boost amount
-                    boost = settings.BoostAmount;
-                    break;
+            public bool TryGetRawTotalExpenses(out int rawExpenses) => _system.TryReadRawExpenses(out rawExpenses);
 
-                case ModSettings.BoostModeType.Percentage:
-                    // Calculate boost as a percentage of the city's total expenses
-                    // This allows the boost to scale with your city's actual running costs
-                    if (settings.BoostPercentage <= 0)
-                    {
-                        Mod.Log.Warn("[Budget Booster] BoostPercentage is invalid (<=0), using minimum");
-                        boost = MinimumPercentageModeBoost;
-                    }
-                    else
-                    {
-                        // Try to get actual city expenses
-                        long totalExpenses = GetTotalCityExpenses();
+            public bool TryGetRawTotalIncome(out int rawIncome) => _system.TryReadRawIncome(out rawIncome);
 
-                        if (totalExpenses > 0)
-                        {
-                            // Calculate boost based on actual city expenses
-                            // e.g., if expenses are $100,000/month and percentage is 10%, boost = $10,000
-                            boost = totalExpenses * settings.BoostPercentage / 100;
+            public void LogInfo(string message) => Mod.Log.Info(message);
 
-                            if (settings.DebugMode)
-                            {
-                                Mod.Log.Info($"[Budget Booster] Percentage mode: {settings.BoostPercentage}% of ${totalExpenses:N0} expenses = ${boost:N0}");
-                            }
-                        }
-                        else
-                        {
-                            // Fallback: use BoostAmount as base if expenses unavailable
-                            // This ensures the mode still works even if expense data isn't accessible
-                            boost = (long)settings.BoostAmount * settings.BoostPercentage / 100;
-
-                            if (settings.DebugMode)
-                            {
-                                Mod.Log.Info($"[Budget Booster] Percentage mode (fallback): {settings.BoostPercentage}% of ${settings.BoostAmount:N0} BoostAmount = ${boost:N0}");
-                            }
-                        }
-
-                        // Enforce minimum boost to ensure meaningful contribution
-                        if (boost < MinimumPercentageModeBoost)
-                        {
-                            boost = MinimumPercentageModeBoost;
-                        }
-                    }
-                    break;
-
-                default:
-                    // Default to auto-balance behavior
-                    Mod.Log.Warn($"[Budget Booster] Unknown BoostMode: {settings.BoostMode}, using AutoBalance");
-                    if (currentMoney < settings.TargetSurplus)
-                    {
-                        boost = settings.TargetSurplus - currentMoney + settings.BoostAmount;
-                    }
-                    break;
-            }
-
-            // Cap the boost to prevent massive jumps
-            if (settings.MaxBoostPerCycle > 0 && boost > settings.MaxBoostPerCycle)
-            {
-                boost = settings.MaxBoostPerCycle;
-            }
-
-            // Ensure non-negative result
-            return Math.Max(0, boost);
+            public void LogWarn(string message) => Mod.Log.Warn(message);
         }
 
         /// <summary>
@@ -502,11 +496,13 @@ namespace BudgetBooster
 
                 var playerMoney = EntityManager.GetComponentData<PlayerMoney>(cityEntity);
                 long currentMoney = GetCurrentMoney(playerMoney);
-                long totalExpenses = GetTotalCityExpenses();
+                bool haveExpenses = TryReadRawExpenses(out int rawExpenses);
+                long totalExpenses = haveExpenses ? -(long)rawExpenses : 0;
 
                 Mod.Log.Info($@"[Budget Booster] === Game State Report ===
   Current Balance: ${currentMoney:N0}
-  City Expenses: ${totalExpenses:N0}{(totalExpenses == 0 ? (_budgetSystem == null ? " (system unavailable)" : " (none recorded yet)") : "")}
+  City Expenses: ${totalExpenses:N0} (raw: {(haveExpenses ? rawExpenses.ToString("N0") : "unavailable")})
+  Logic Generation: {LogicHost.Generation} - {LogicHost.Current?.Describe() ?? "none loaded"}
   Session Boosts Applied: {SessionStatistics.TotalBoosts}
   Session Money Added: ${SessionStatistics.TotalMoneyAdded:N0}
   Last Boost: ${SessionStatistics.LastBoostAmount:N0}
@@ -568,12 +564,21 @@ namespace BudgetBooster
                     }
                     else
                     {
-                        long expenses = GetTotalCityExpenses();
-                        Mod.Log.Info($"[Budget Booster] City Expenses API: Working - Total expenses: ${expenses:N0}");
+                        // Report the game's values UNMODIFIED. Sign conventions are the single most
+                        // common source of wrong-but-plausible readings, so show what the API actually
+                        // returned rather than what we made of it.
+                        string rawExp = TryReadRawExpenses(out int re) ? re.ToString("N0") : "unavailable";
+                        string rawInc = TryReadRawIncome(out int ri) ? ri.ToString("N0") : "unavailable";
+
+                        Mod.Log.Info($"[Budget Booster] Raw GetTotalExpenses(): {rawExp}");
+                        Mod.Log.Info($"[Budget Booster] Raw GetTotalIncome():   {rawInc}");
                         Mod.Log.Info($"[Budget Booster] Expense Read Failures: {_expenseReadFailures:N0}");
                     }
                 }
             }
+
+            // Reloadable logic status
+            Mod.Log.Info(LogicHost.GetDiagnosticSummary());
 
             // PlayerMoneyAccessor status
             Mod.Log.Info(PlayerMoneyAccessor.GetDiagnosticSummary());

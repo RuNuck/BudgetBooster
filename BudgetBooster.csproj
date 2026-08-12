@@ -10,7 +10,7 @@
     <Nullable>enable</Nullable>
     
     <!-- Mod Information -->
-    <Version>1.3.0</Version>
+    <Version>1.4.0</Version>
     <Authors>Budget Booster Team</Authors>
     <Company>Budget Booster Team</Company>
     <Product>Budget Booster</Product>
@@ -51,6 +51,16 @@
     <LocalModsPath Condition="'$(CSII_LOCALMODSPATH)' != ''">$(CSII_LOCALMODSPATH)\$(AssemblyName)</LocalModsPath>
     <LocalModsPath Condition="'$(LocalModsPath)' == ''">$(LOCALAPPDATA)Low\Colossal Order\Cities Skylines II\Mods\$(AssemblyName)</LocalModsPath>
   </PropertyGroup>
+
+  <!--
+    The reloadable logic assembly lives in Logic/ and is built by its own project. Without this the
+    host's default **/*.cs glob would compile BoostLogic.cs into the host AND pick up Logic/obj's
+    generated AssemblyInfo, producing duplicate-attribute errors (CS0579).
+  -->
+  <ItemGroup>
+    <Compile Remove="Logic/**" />
+    <None Remove="Logic/**" />
+  </ItemGroup>
 
   <!-- Game DLL References -->
   <ItemGroup>

@@ -1,0 +1,100 @@
+<Publish>
+  <!--Id must be set in order to update existing mod. It is not required when publishing a mod for the first time.
+      After the first successful publish, Paradox Mods assigns an id - paste it here so later publishes update
+      this listing instead of creating a duplicate.-->
+  <ModId Value="" />
+  <!--Name of the mod to display to players-->
+  <DisplayName Value="Budget Booster" />
+  <!--Short description of the mod-->
+  <ShortDescription Value="A cheat mod that keeps your city budget positive with configurable automatic boosts" />
+  <!--Long description of the mod. Single line or multi line. Supports minimal markdown subset-->
+  <LongDescription># Budget Booster
+
+**A cheat mod that keeps your city budget positive, so you can build without watching the bank balance.**
+
+This is explicitly a cheat mod. If managing your city's finances is the part of the game you enjoy,
+this mod is not for you. If you would rather spend your time designing, it removes the money problem
+and gets out of the way.
+
+## Boost modes
+
+Pick how the mod tops you up, in Options - Mods - Budget Booster:
+
+- **Auto-Balance** - only adds money when your balance drops below a target you set. Adds just enough
+  to recover, so it feels like a safety net rather than infinite cash.
+- **Fixed Boost** - adds a set amount every cycle. A steady income stream for creative building.
+- **Percentage** - scales with your city. Reads your city's actual total expenses from the game's
+  budget system and adds a percentage of them, so the help grows as your city does.
+
+## Quick presets
+
+One click sets everything up:
+
+- **Casual Builder** - gentle $250K Auto-Balance. Stress-free building, still some challenge.
+- **Sandbox Mode** - $5M Fixed Boost. Unlimited creative building.
+- **Growing City** - Percentage mode at 25%. Organic scaling, less micromanagement.
+- **Emergency Only** - $50K at $0. A bankruptcy safety net that still feels fair.
+
+## Everything is configurable
+
+Sliders in the in-game options menu for boost amount, target surplus, boost percentage, a maximum
+per cycle safety cap, and how often the mod checks. Options that do not apply to your chosen mode
+hide themselves, so the panel stays readable.
+
+## Session statistics
+
+See how much the mod has actually done for you: boosts applied, total money added, your last boost,
+and current balance. Counters cover the current session and reset when you restart the game.
+
+## Notifications
+
+Choose how much you hear about it - off, minimal (only large boosts), normal, or detailed with
+balance and running totals.
+
+## Troubleshooting built in
+
+A Debug section with detailed logging and a **Run Diagnostics** button that writes a full system
+report to the log, covering the mod's status, your settings, and whether it can read your city's
+money and expenses. If something looks wrong, that report is the first thing to check, and the most
+useful thing to attach to a bug report.
+
+## Compatibility
+
+- Works on existing saves. Install or remove at any time.
+- Removing the mod leaves your money alone. Your save stays compatible with the base game.
+- May conflict with other mods that change the economy or write to the city's money.
+
+## Bugs and feedback
+
+Please report issues on GitHub with your game version, the mod version, the output of
+**Run Diagnostics**, and steps to reproduce.</LongDescription>
+  <!--Thumbnail-->
+  <!--REQUIRED: add Properties/Thumbnail.png before publishing. Paradox Mods will reject a publish without it.-->
+  <Thumbnail Value="Properties/Thumbnail.png" />
+  <!--Screenshot, can be set multiple times-->
+  <!--Add PNG files to Properties/ and uncomment. Screenshots of the settings panel and of a boost
+      being applied are the most useful ones to show.-->
+  <!--<Screenshot Value="Properties/Preview_1.png" />-->
+  <!--<Screenshot Value="Properties/Preview_2.png" />-->
+  <!--Tag, can be set multiple times. Code mods must carry the "Code Mod" tag.-->
+  <Tag Value="Code Mod" />
+  <!--Link to the forum post where the mod can be discussed-->
+  <!--<ForumLink Value="" />-->
+  <!--Version of the mod. Keep in sync with Version in BudgetBooster.csproj and ModVersion in Mod.cs.-->
+  <ModVersion Value="1.4.0" />
+  <!--Recommended version of the base game to use the mod-->
+  <GameVersion Value="1.6.*" />
+  <!--Dependency for the mod, can be set multiple times-->
+  <!--<Dependency Id="" />-->
+  <!--Change log for new version. Single line or multi line. Supports minimal markdown subset-->
+  <ChangeLog>- Percentage mode now scales with your city's real expenses, read from the game's budget system.
+  It previously always fell back to scaling the Boost Amount slider, so it never actually grew with
+  your city. Existing Percentage mode users will see larger boosts and may want to lower the
+  percentage.
+- Fixed session statistics being saved to disk, which made them accumulate across restarts while
+  labelled as per-session. They now reset each time you launch the game.
+- Fixed settings being written under two different names internally, which could leave configuration
+  stranded. Existing settings are migrated automatically on first launch.</ChangeLog>
+  <!--External link. supported types are discord, github, youtube, twitch, x, paypal, patreon, kofi, crowdin-->
+  <ExternalLink Type="github" Url="https://github.com/RuNuck/BudgetBooster" />
+</Publish>

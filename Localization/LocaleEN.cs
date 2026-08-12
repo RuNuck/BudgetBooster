@@ -123,6 +123,9 @@ namespace BudgetBooster.Localization
 
                 { _settings.GetOptionLabelLocaleID(nameof(ModSettings.RunDiagnostics)), "Run Diagnostics" },
                 { _settings.GetOptionDescLocaleID(nameof(ModSettings.RunDiagnostics)), "Run a diagnostic check and log detailed system status to Player.log." },
+
+                { _settings.GetOptionLabelLocaleID(nameof(ModSettings.ReloadBoostLogic)), "Reload Boost Logic" },
+                { _settings.GetOptionDescLocaleID(nameof(ModSettings.ReloadBoostLogic)), "Reload the boost calculation from disk without restarting the game. Intended for mod development: rebuild BudgetBooster.Logic.dll, then click this. Your settings and statistics are unaffected." },
             };
         }
 
