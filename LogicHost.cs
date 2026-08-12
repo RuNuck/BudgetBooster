@@ -249,9 +249,17 @@ namespace BudgetBooster
                 _lastError = $"Type load failed (rebuild both assemblies?): {detail}";
                 return false;
             }
+            catch (BadImageFormatException)
+            {
+                // Mono's message for a malformed assembly is a bare pointer value, which tells the
+                // developer nothing. Say what actually happened instead.
+                _lastError = $"{LogicAssemblyFileName} is not a valid .NET assembly (truncated or corrupt build?) at {path}";
+                return false;
+            }
             catch (Exception ex)
             {
-                _lastError = $"Load failed: {ex.Message}";
+                // Include the exception type: several Mono load failures also carry unhelpful messages.
+                _lastError = $"Load failed ({ex.GetType().Name}): {ex.Message}";
                 return false;
             }
         }
