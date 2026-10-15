@@ -19,20 +19,26 @@ it is not for you. If you would rather spend your time designing, it takes care 
 
 Pick how the mod tops you up in Options / Mods / Budget Booster.
 
-- Auto-Balance: adds money only when your balance drops below a target you set, and only enough
-  to recover. It works as a safety net, not infinite cash.
+- Auto-Balance: adds money only when your balance drops below a target you set. It adds enough
+  to get back to the target plus your Boost Amount, up to the per-cycle cap. It works as a safety
+  net, not infinite cash.
 - Fixed Boost: adds a set amount every cycle, a steady income for creative building.
-- Percentage: reads your city's actual total expenses from the game's budget system and adds a
-  percentage of them, so the boost grows as your city does.
+- Percentage: reads what your city spends per day from the game's budget system and pays back a
+  share of it, spread across the day. At 25%, a city spending $1M a day gets about $250K a day, so
+  the boost grows as your city does.
+
+When the game's own Unlimited Money option is on, the mod does nothing.
 
 ## Quick presets
 
-Each preset sets up all the options in one click.
+Each preset sets several options in one click. Its tooltip lists exactly which ones and to what.
 
-- Casual Builder: $250K Auto-Balance. Light help that still leaves some challenge.
-- Sandbox Mode: $5M Fixed Boost, for building without limits.
-- Growing City: Percentage mode at 25%. Scales with the city, so there is less to adjust.
-- Emergency Only: $50K at $0. A safety net against bankruptcy and nothing more.
+- Casual Builder: Auto-Balance to a $100K target plus $250K. Light help that still leaves some
+  challenge.
+- Sandbox Mode: $5M Fixed Boost every 64 ticks, for building without limits.
+- Growing City: Percentage mode at 25% of daily expenses. Scales with the city, so there is less
+  to adjust.
+- Emergency Only: Auto-Balance to $0 plus $50K. A safety net against bankruptcy and nothing more.
 
 ## Settings
 
@@ -51,10 +57,11 @@ You can turn them off, or pick a level: minimal (only large boosts), normal, or 
 
 ## Diagnostics
 
-The Debug section has detailed logging and a **Run Diagnostics** button. The button writes a full
-report to the log: the mod's status, your settings, and whether it can read your city's money and
-expenses. If something looks wrong, check that report first. It is also the most useful thing to
-attach to a bug report.
+The Debug section has detailed logging and a **Run Diagnostics** button. The button writes a
+report to the log right away: the mod version, any load errors, your settings and session
+statistics. Your city's balance, expenses and which Percentage path is in use follow once a city is
+loaded and unpaused. If something looks wrong, check that report first. It is also the most useful
+thing to attach to a bug report.
 
 ## Compatibility
 
@@ -79,20 +86,26 @@ Report issues on GitHub with your game version, the mod version, the output of
   <!--Link to the forum post where the mod can be discussed-->
   <!--<ForumLink Value="" />-->
   <!--Version of the mod. Keep in sync with Version in BudgetBooster.csproj and ModVersion in Mod.cs.-->
-  <ModVersion Value="1.4.1" />
+  <ModVersion Value="1.5.0" />
   <!--Recommended version of the base game to use the mod-->
   <GameVersion Value="1.6.*" />
   <!--Dependency for the mod, can be set multiple times-->
   <!--<Dependency Id="" />-->
   <!--Change log for new version. Single line or multi line. Supports minimal markdown subset-->
-  <ChangeLog>- Percentage mode now scales with your city's real expenses, read from the game's budget system.
-  Before this it always fell back to scaling the Boost Amount slider, so it never grew with your
-  city. If you already use Percentage mode, expect larger boosts. You may want to lower the
-  percentage.
-- Fixed session statistics being saved to disk. They added up across restarts while labelled as
-  per-session. They now reset each time you launch the game.
-- Fixed settings being written under two different names internally, which could leave configuration
-  stranded. Existing settings are migrated automatically on first launch.</ChangeLog>
+  <ChangeLog>- Percentage mode now pays the share of your city's daily expenses you chose, spread across the
+  day. Before this it paid that share of a whole day's expenses every cycle, about 1,000 times too
+  much at the default interval. If you use Percentage mode, expect much smaller boosts. Raise Boost
+  Percentage if you want more.
+- Boosts near the $2 billion ceiling now count only the money actually added, and the balance can
+  no longer wrap around to minus $2 billion.
+- With the game's Unlimited Money option on, the mod now stays idle instead of misreading your
+  balance.
+- Run Diagnostics now writes the mod version, load errors, settings and statistics straight away.
+  Your city's balance, expenses and which Percentage path is in use follow once a city is loaded and
+  unpaused. Reload Boost Logic no longer waits for the mod to be enabled.
+- Log Boost Cycles (now Log Applied Boosts) only logs cycles that add money. It used to write two
+  lines every cycle and could grow the log to many megabytes.
+- Preset tooltips now list every setting each preset changes.</ChangeLog>
   <!--External link. supported types are discord, github, youtube, twitch, x, paypal, patreon, kofi, crowdin-->
   <ExternalLink Type="github" Url="https://github.com/RuNuck/BudgetBooster" />
 </Publish>

@@ -14,8 +14,7 @@ namespace BudgetBooster
     /// Being static, these reset when the process exits, which matches the wording used in the UI
     /// ("since the game started"). <see cref="Mod.OnDispose"/> also clears them so a mod reload starts fresh.
     ///
-    /// Thread-safe to match the access patterns used by <see cref="PlayerMoneyAccessor"/> and
-    /// <see cref="Patches"/>.
+    /// Thread-safe: the simulation system writes these while the settings UI reads them.
     /// </summary>
     public static class SessionStatistics
     {

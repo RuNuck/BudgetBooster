@@ -1,5 +1,3 @@
-using System;
-
 namespace BudgetBooster.Logic
 {
     /// <summary>
@@ -11,7 +9,7 @@ namespace BudgetBooster.Logic
     /// the new code without restarting the game or reloading the city.
     ///
     /// What can change here and be reloaded:
-    ///   - Anything inside these method bodies
+    ///   - Anything inside these method bodies, and in <see cref="BoostFormulas"/>
     ///   - New private helpers, new types within this assembly
     ///
     /// What still requires a full restart:
@@ -21,16 +19,10 @@ namespace BudgetBooster.Logic
     public sealed class BoostLogic : IBoostLogic
     {
         /// <summary>
-        /// Minimum boost for Percentage mode, so a tiny percentage of small expenses still does
-        /// something noticeable.
-        /// </summary>
-        private const int MinimumPercentageModeBoost = 10000;
-
-        /// <summary>
         /// Bump this when iterating so the log makes it obvious which build is live. This is the
         /// fastest way to confirm a reload actually took effect.
         /// </summary>
-        private const string BuildTag = "BoostLogic 1.4.1";
+        private const string BuildTag = "BoostLogic 1.5.0";
 
         public string Describe() => BuildTag;
 
@@ -49,7 +41,7 @@ namespace BudgetBooster.Logic
             switch (settings.BoostMode)
             {
                 case ModSettings.BoostModeType.AutoBalance:
-                    boost = CalculateAutoBalance(ctx.CurrentMoney, settings);
+                    boost = BoostFormulas.AutoBalance(ctx.CurrentMoney, settings.TargetSurplus, settings.BoostAmount);
                     break;
 
                 case ModSettings.BoostModeType.FixedBoost:
@@ -62,70 +54,60 @@ namespace BudgetBooster.Logic
 
                 default:
                     ctx.LogWarn($"[Budget Booster] Unknown BoostMode: {settings.BoostMode}, using AutoBalance");
-                    boost = CalculateAutoBalance(ctx.CurrentMoney, settings);
+                    boost = BoostFormulas.AutoBalance(ctx.CurrentMoney, settings.TargetSurplus, settings.BoostAmount);
                     break;
             }
 
-            // Cap to prevent massive jumps.
-            if (settings.MaxBoostPerCycle > 0 && boost > settings.MaxBoostPerCycle)
-            {
-                boost = settings.MaxBoostPerCycle;
-            }
-
-            return Math.Max(0, boost);
+            // Cap to prevent massive jumps. The host enforces the same cap again before applying.
+            return BoostFormulas.CapToMaxPerCycle(boost, settings.MaxBoostPerCycle);
         }
 
-        /// <summary>
-        /// Tops the balance back up to the target surplus, plus the configured boost on top.
-        /// </summary>
-        private static long CalculateAutoBalance(long currentMoney, ModSettings settings)
+        public string DescribePercentagePath(IBoostContext ctx)
         {
-            if (currentMoney >= settings.TargetSurplus)
-                return 0;
-
-            return settings.TargetSurplus - currentMoney + settings.BoostAmount;
+            return TryGetExpensePath(ctx, out long dailyExpenses)
+                ? $"expenses (${dailyExpenses:N0}/day)"
+                : "fallback (Boost Amount)";
         }
 
         /// <summary>
-        /// Scales the boost against the city's real expenses, falling back to scaling BoostAmount when
-        /// no usable expense figure is available.
+        /// Adds Boost Percentage of the city's daily expenses, spread across the cycles in a day.
+        /// Falls back to a percentage of Boost Amount per cycle when no usable expense figure exists.
         /// </summary>
+        /// <remarks>
+        /// GetTotalExpenses() is a per-DAY total, and this runs once per cycle (UpdateInterval ticks,
+        /// 256 by default, against 262,144 ticks per day). Up to 1.4.1 the full daily percentage was
+        /// added every cycle, about 1,024 times the intended amount at the default interval.
+        /// </remarks>
         private static long CalculatePercentage(IBoostContext ctx, ModSettings settings)
         {
             if (settings.BoostPercentage <= 0)
             {
                 ctx.LogWarn("[Budget Booster] BoostPercentage is invalid (<=0), using minimum");
-                return MinimumPercentageModeBoost;
+                return BoostFormulas.MinimumFallbackBoost;
             }
 
-            long expenses = GetTotalExpenses(ctx);
-            long boost;
-
-            if (expenses > 0)
+            if (TryGetExpensePath(ctx, out long dailyExpenses))
             {
-                boost = expenses * settings.BoostPercentage / 100;
-
-                if (settings.DebugMode)
-                {
-                    ctx.LogInfo($"[Budget Booster] Percentage mode: {settings.BoostPercentage}% of ${expenses:N0} expenses = ${boost:N0}");
-                }
-            }
-            else
-            {
-                // No usable expense figure - scale BoostAmount instead so the mode still works.
-                boost = (long)settings.BoostAmount * settings.BoostPercentage / 100;
-
-                if (settings.DebugMode)
-                {
-                    ctx.LogInfo($"[Budget Booster] Percentage mode (fallback): {settings.BoostPercentage}% of ${settings.BoostAmount:N0} BoostAmount = ${boost:N0}");
-                }
+                return BoostFormulas.PercentageOfDailyExpenses(dailyExpenses, settings.BoostPercentage, ctx.TicksPerCycle, ctx.TicksPerDay);
             }
 
-            return boost < MinimumPercentageModeBoost ? MinimumPercentageModeBoost : boost;
+            // No usable expense figure - scale BoostAmount instead so the mode still works.
+            return BoostFormulas.PercentageFallback(settings.BoostAmount, settings.BoostPercentage);
         }
 
         /// <summary>
-        /// Converts the game's raw expense figure into a positive magnitude.
+        /// Decides between the expense path and the fallback. Shared by the calculation and by
+        /// <see cref="DescribePercentagePath"/> so the diagnostics report cannot disagree with it.
+        /// </summary>
+        /// <returns>True when expenses are known and the tick figures can scale them to a cycle.</returns>
+        private static bool TryGetExpensePath(IBoostContext ctx, out long dailyExpenses)
+        {
+            dailyExpenses = GetDailyExpenses(ctx);
+            return dailyExpenses > 0 && ctx.TicksPerCycle > 0 && ctx.TicksPerDay > 0;
+        }
+
+        /// <summary>
+        /// Converts the game's raw expense figure into a positive per-day magnitude.
         /// </summary>
         /// <remarks>
         /// CityServiceBudgetSystem.GetTotalExpenses() returns a NEGATIVE number. Internally it
@@ -138,8 +120,8 @@ namespace BudgetBooster.Logic
         /// same class of mistake is now a rebuild-and-click away from being corrected, rather than a
         /// full game restart.
         /// </remarks>
-        /// <returns>Positive expense total, or 0 when unavailable.</returns>
-        private static long GetTotalExpenses(IBoostContext ctx)
+        /// <returns>Positive expense total per day, or 0 when unavailable.</returns>
+        private static long GetDailyExpenses(IBoostContext ctx)
         {
             if (!ctx.TryGetRawTotalExpenses(out int raw))
                 return 0;

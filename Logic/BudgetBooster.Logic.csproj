@@ -8,7 +8,7 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
 
-    <Version>1.4.1</Version>
+    <Version>1.5.0</Version>
     <Product>Budget Booster Logic</Product>
     <Description>Reloadable boost logic for Budget Booster. Loaded from bytes by the host assembly so it can be swapped without restarting the game.</Description>
     <Copyright>Copyright © 2026</Copyright>
@@ -86,11 +86,17 @@
   <!--
     Deploy next to the host DLL. LogicHost resolves this file relative to the host assembly location,
     so the two must sit in the same folder.
+
+    Deployed as BudgetBooster.Logic.bin, not .dll: the game's mod loader loads every .dll in a mod
+    folder, so a .dll would also be loaded once by the game as a frozen copy beside the reloadable one.
+    The Delete removes a .dll left behind by versions up to 1.4.1. Keep the file name in step with
+    LogicHost.LogicAssemblyFileName.
   -->
   <Target Name="DeployLogic" AfterTargets="Build" Condition="Exists('$(CitiesPath)')">
     <Message Importance="high" Text="Deploying reloadable logic to: $(LocalModsPath)" />
     <MakeDir Directories="$(LocalModsPath)" />
-    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(LocalModsPath)" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFiles="$(LocalModsPath)\$(AssemblyName).bin" />
+    <Delete Files="$(LocalModsPath)\$(AssemblyName).dll" />
     <Message Importance="high" Text="Logic deployed - use 'Reload Boost Logic' in mod settings to pick it up without restarting" />
   </Target>
 

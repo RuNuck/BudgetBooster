@@ -10,11 +10,11 @@
     <Nullable>enable</Nullable>
     
     <!-- Mod Information -->
-    <Version>1.4.1</Version>
+    <Version>1.5.0</Version>
     <Authors>Budget Booster Team</Authors>
     <Company>Budget Booster Team</Company>
     <Product>Budget Booster</Product>
-    <Description>A cheat mod for Cities: Skylines II (v1.4.x compatible) that automatically keeps your city budget positive with configurable boost modes, notifications, and diagnostics!</Description>
+    <Description>A cheat mod for Cities: Skylines II (v1.6.x compatible) that automatically keeps your city budget positive with configurable boost modes, notifications, and diagnostics!</Description>
     <Copyright>Copyright © 2026</Copyright>
     
     <!-- Output Configuration -->
@@ -127,9 +127,12 @@
     <Message Importance="high" Text="Mod deployed successfully!" />
   </Target>
 
-  <!-- Clean up deployed mod when cleaning -->
+  <!--
+    Clean up the deployed mod when cleaning: the host DLL, the logic (deployed by the Logic project as
+    .bin), a stale logic .dll from versions up to 1.4.1, and the README copied by DeployMod.
+  -->
   <Target Name="CleanMod" AfterTargets="Clean" Condition="Exists('$(LocalModsPath)')">
-    <Delete Files="$(LocalModsPath)\$(TargetFileName)" />
+    <Delete Files="$(LocalModsPath)\$(TargetFileName);$(LocalModsPath)\$(AssemblyName).Logic.bin;$(LocalModsPath)\$(AssemblyName).Logic.dll;$(LocalModsPath)\README.md" />
     <Message Importance="high" Text="Cleaned deployed mod" />
   </Target>
 

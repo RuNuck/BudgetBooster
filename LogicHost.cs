@@ -16,12 +16,13 @@ namespace BudgetBooster
     ///
     /// Unity's Mono cannot unload an assembly - there is no collectible AssemblyLoadContext and no
     /// unloadable AppDomain in a player build. So this never tries. Instead it loads a FRESH copy of
-    /// BudgetBooster.Logic.dll from a byte array on each reload, creates a new IBoostLogic instance,
-    /// and swaps the reference the ECS system reads. The previous assembly stays loaded forever and
+    /// the logic assembly (deployed as BudgetBooster.Logic.bin) from a byte array on each reload,
+    /// creates a new IBoostLogic instance, and swaps the reference the ECS system reads. The
+    /// previous assembly stays loaded forever and
     /// leaks a few tens of KB per reload, which is irrelevant next to being able to iterate without
     /// restarting a city.
     ///
-    /// Reading the file into a byte[] first matters twice over: it avoids locking the DLL so a build
+    /// Reading the file into a byte[] first matters twice over: it avoids locking the file so a build
     /// can overwrite it, and Assembly.Load(byte[]) yields a distinct assembly per call. A recompile
     /// always changes the module MVID, so each load is genuinely a new assembly rather than a cached
     /// one.
@@ -37,8 +38,15 @@ namespace BudgetBooster
     /// </summary>
     public static class LogicHost
     {
-        /// <summary>File name of the reloadable assembly, expected alongside the host DLL.</summary>
-        public const string LogicAssemblyFileName = "BudgetBooster.Logic.dll";
+        /// <summary>
+        /// File name of the reloadable assembly, expected alongside the host DLL.
+        /// </summary>
+        /// <remarks>
+        /// Deployed as .bin, not .dll. The game's mod loader loads every .dll in a mod folder as an
+        /// executable asset, so a .dll here would also be loaded once by the game as a frozen copy
+        /// that never reloads. Assembly.Load(byte[]) does not care about the extension.
+        /// </remarks>
+        public const string LogicAssemblyFileName = "BudgetBooster.Logic.bin";
 
         private static IBoostLogic? _current;
         private static IBoostLogic? _pending;
@@ -58,11 +66,8 @@ namespace BudgetBooster
         /// <summary>Last load failure, or null if the last attempt succeeded.</summary>
         public static string? LastError => _lastError;
 
-        /// <summary>True when a reload has been requested but not yet applied.</summary>
-        public static bool HasPendingSwap => _hasPending;
-
         /// <summary>
-        /// Resolves where BudgetBooster.Logic.dll should live: next to the host assembly, inside the
+        /// Resolves where the logic assembly should live: next to the host assembly, inside the
         /// mod's own install folder. Nothing outside that folder is ever loaded.
         /// </summary>
         /// <remarks>

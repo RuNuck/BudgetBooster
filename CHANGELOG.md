@@ -5,6 +5,82 @@ All notable changes to Budget Booster are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-10-15
+
+### Changed
+- **Percentage boosts are now much smaller.** `GetTotalExpenses()` is a per-day total, and since
+  v1.4.0 the mod added Boost Percentage of it on every cycle. At the default interval of 256 ticks a
+  day has 1,024 cycles, so the mod paid about 1,024 times what the setting said: 25% of $1,000,000 a
+  day came to $250,000 per cycle instead of $244. The expense path now adds
+  `daily expenses * percentage / 100 * ticks per cycle / ticks per day`, so Boost Percentage means
+  that share of what the city spends. The $10,000 per-cycle minimum no longer applies to this path,
+  since a floor on every cycle would overpay in the same way. The fallback path (no expense data:
+  Boost Percentage of Boost Amount per cycle, at least $10,000) is unchanged, and so are the preset
+  values. The old amounts cannot be reached in this mode any more (100% now means all of what the
+  city spends); use Fixed Boost for larger amounts.
+- `IBoostContext` gained `TicksPerCycle` and `TicksPerDay`, and `IBoostLogic` gained
+  `DescribePercentagePath`. These live in the host, so a restart is needed, not a logic reload.
+- The logic assembly is now deployed as `BudgetBooster.Logic.bin`. The game's mod loader loads
+  every `.dll` in a mod folder, so `BudgetBooster.Logic.dll` was also loaded once by the game as a
+  frozen copy beside the reloadable one. The build deletes a leftover `BudgetBooster.Logic.dll`.
+- Run Diagnostics writes the parts that need no city straight away: mod version, load error, boost
+  logic status, settings and session statistics. The city figures (balance, Unlimited Money flag, raw
+  expenses and income, and which Percentage path is active) follow as a `CITY DIAGNOSTICS` block on
+  the next simulation tick, which needs a loaded, unpaused city. The tooltip says so.
+- Reload Boost Logic now swaps the new logic in before the Enabled and initialization checks, so a
+  reload also takes effect with the mod switched off. Diagnostics already ran before those checks.
+- **Log Boost Cycles** is labelled **Log Applied Boosts** and writes one line per cycle that adds
+  money. It used to write two lines on every cycle, boost or not; a 13.8 MB log was observed.
+  Persistent reasons for skipping a cycle are logged once, when they start.
+- The preset tooltips list every setting each preset changes, with its value. Sandbox Mode no
+  longer calls $5M "the maximum boost" (the slider goes to $10M).
+- Auto-Balance is described the same way everywhere: below Target Surplus it adds what it takes to
+  get back to Target Surplus plus Boost Amount, capped by Max Boost Per Cycle. The README, tooltips
+  and Paradox Mods description had three different versions.
+
+### Fixed
+- Boosts that hit the $2,000,000,000 balance ceiling were recorded at the full requested amount, so
+  the statistics overstated money added and Current Balance could show more than $2B. The mod now
+  records and reports only what actually landed, and skips the cycle when nothing did.
+- The host now clamps every boost to Max Boost Per Cycle and to the room left below the ceiling
+  before calling `PlayerMoney.Add`. That method adds without overflow checks, so a logic build asking
+  for more than about $147M at the ceiling would have wrapped the balance to -$2B.
+- The balance was read through reflection on the private `m_Money` field, which ignored the game's
+  Unlimited Money option, and a failed read counted as $0, so Auto-Balance paid out on every cycle.
+  The mod now uses the public `PlayerMoney.money` getter and `m_Unlimited` field, and does nothing
+  while Unlimited Money is on.
+- The legacy settings migration was gated on `CurrentSettingsVersion`, so the next version bump
+  would have run it again and overwritten current settings with v1.2.0 values. Each migration step
+  now runs only for files older than the version it upgrades to.
+- Run Diagnostics was a saved setting, so a click took effect on the next tick or, if the game was
+  closed first, in the next session. The request is now an in-memory flag.
+- The diagnostics report printed `PlayerMoney API: Working` even after a failed read, and never
+  said which Percentage path was in use. It now reports the real state.
+- Load errors never reached the user: the stored load error was never printed, and the mod logged
+  `loaded successfully!` even when the boost logic failed to load. It now logs
+  `loaded with errors:` in that case, and Run Diagnostics shows the load error.
+- The shutdown log always said 0 boosts, because statistics were cleared before they were logged.
+  The English locale source was never removed on dispose. Both fixed.
+- `dotnet clean` only removed `BudgetBooster.dll` from the mods folder. It now also removes
+  `BudgetBooster.Logic.bin`, a stale `BudgetBooster.Logic.dll`, and the deployed README.
+- The Minimal Notification Threshold tooltip said "larger than"; a boost of exactly the threshold
+  also notifies.
+
+### Removed
+- `PlayerMoneyAccessor.cs`, 440 lines of reflection, replaced by the game's public API.
+- `Patches.cs` and every mention of Harmony in code and in the README's feature list. The mod never
+  used Harmony.
+- The saved `DiagnosticsRequested` setting. Existing `.coc` files still load; the stale key is
+  dropped on the next save.
+- Unused members: `BudgetBoosterSystem.GetSystemDiagnostics`, `IsInitialized`,
+  `HasValidCitySystem`, `HasValidBudgetSystem`, `TotalBoostsApplied`, `TotalMoneyAdded`, and
+  `LogicHost.HasPendingSwap`.
+- `[UpdateAfter(typeof(CitySystem))]` on `BudgetBoosterSystem`. CS2's `UpdateSystem` ignores it.
+- The per-cycle Percentage debug lines from the logic, and the extra debug line logged for each
+  boost when notifications were off.
+- The Unity and Visual Studio template entries in `.gitignore`. It now lists only what this repo
+  produces.
+
 ## [1.4.1] - 2026-10-15
 
 ### Fixed

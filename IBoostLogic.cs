@@ -24,12 +24,21 @@ namespace BudgetBooster
         /// <param name="ctx">Raw game data and services supplied by the host.</param>
         /// <returns>Amount to add, or 0 for no boost.</returns>
         long CalculateBoost(IBoostContext ctx);
+
+        /// <summary>
+        /// Says which Percentage mode path <see cref="CalculateBoost"/> would take with this context,
+        /// for the Run Diagnostics report. The logic answers this itself so the report cannot
+        /// disagree with the calculation.
+        /// </summary>
+        /// <param name="ctx">Raw game data and services supplied by the host.</param>
+        /// <returns>For example "expenses ($1,000,000/day)" or "fallback (Boost Amount)".</returns>
+        string DescribePercentagePath(IBoostContext ctx);
     }
 
     /// <summary>
     /// Everything the reloadable logic is allowed to see, supplied by the host each cycle.
     ///
-    /// The split is deliberate: the host owns *plumbing* (ECS lookups, reflection, raw API calls) and
+    /// The split is deliberate: the host owns *plumbing* (ECS lookups, game constants, raw API calls) and
     /// the logic owns *interpretation* (sign conventions, fallbacks, arithmetic). Every defect this
     /// mod has hit so far - PlayerMoney living in the wrong namespace, GetTotalExpenses returning a
     /// negative figure, the clamp that discarded it - was interpretation. Putting that side behind the
@@ -40,11 +49,20 @@ namespace BudgetBooster
     /// </summary>
     public interface IBoostContext
     {
-        /// <summary>The city's current money balance, as read by PlayerMoneyAccessor.</summary>
+        /// <summary>The city's current money balance, from the game's PlayerMoney.money.</summary>
         long CurrentMoney { get; }
 
         /// <summary>
-        /// The unmodified return value of CityServiceBudgetSystem.GetTotalExpenses().
+        /// Simulation ticks between boost cycles. The host runs one cycle every this many ticks, so a
+        /// per-day figure covers TicksPerDay / TicksPerCycle cycles.
+        /// </summary>
+        int TicksPerCycle { get; }
+
+        /// <summary>Simulation ticks in one in-game day (the game's TimeSystem.kTicksPerDay).</summary>
+        int TicksPerDay { get; }
+
+        /// <summary>
+        /// The unmodified return value of CityServiceBudgetSystem.GetTotalExpenses(), a per-day total.
         /// Note this is NEGATIVE for a city with expenses - the logic assembly is responsible for
         /// interpreting the sign. False when the budget system is unavailable.
         /// </summary>

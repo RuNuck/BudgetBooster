@@ -7,13 +7,15 @@ A cheat mod that adds **in-game sliders** for automatic budget boosting. It keep
 - **Settings UI** in the game's Options menu: an enable/disable toggle, a boost mode selector (Auto-Balance, Fixed Boost, Percentage), and sliders for boost amount, target surplus and update frequency.
 - **Session Statistics**, updated in real time: total boosts applied this session, total money added, the last boost amount and your current balance. A button resets them.
 - **Notifications** when a boost happens. You can turn them off, pick one of three verbosity levels (Minimal, Normal, Detailed), and set a threshold for what Minimal reports.
-- **Debug & Diagnostics**: a debug mode for detailed logging, a Run Diagnostics button that reports system status, Harmony patch status tracking, and settings validation that auto-corrects bad values.
+- **Debug & Diagnostics**: a debug mode for detailed logging, a Run Diagnostics button that reports system status, and settings validation that auto-corrects bad values.
 
 There are three boost modes:
 
-- Auto-Balance only adds money when you're in the red.
+- Auto-Balance only adds money when your balance is below Target Surplus.
 - Fixed Boost adds a constant income regardless of budget status.
-- Percentage scales the boost with your city's expenses.
+- Percentage pays back a share of what your city spends each day.
+
+While the game's own Unlimited Money option is on, the mod does nothing.
 
 ## Where the Settings Are
 
@@ -29,11 +31,14 @@ After installing, go to **Options → Mods → Budget Booster**. You'll find the
 
 ### Manual Installation
 
-1. Build the solution to get two DLLs: `BudgetBooster.dll` and `BudgetBooster.Logic.dll`
-2. Copy both to: `%LOCALAPPDATA%Low\Colossal Order\Cities Skylines II\Mods\BudgetBooster\`
-3. Launch the game
+1. Build the solution. You get `bin\Debug\BudgetBooster.dll` and `Logic\bin\Debug\BudgetBooster.Logic.dll`
+2. Copy `BudgetBooster.dll` to: `%LOCALAPPDATA%Low\Colossal Order\Cities Skylines II\Mods\BudgetBooster\`
+3. Copy `BudgetBooster.Logic.dll` to the same folder and rename it to `BudgetBooster.Logic.bin`
+4. Launch the game
 
-The mod needs both files. Without `BudgetBooster.Logic.dll` it still loads and shows its settings, but it never adds money, and the log says `Failed to load boost logic`.
+The mod folder should hold `BudgetBooster.dll` and `BudgetBooster.Logic.bin`. Without the `.bin` the mod still loads and shows its settings, but it never adds money, and the log says `Failed to load boost logic`.
+
+The logic file is a `.bin` on purpose. The game loads every `.dll` in a mod folder by itself, so a `BudgetBooster.Logic.dll` there would get loaded twice, once by the game as a copy that never reloads. If one is left over from an older version, delete it. A build does this for you.
 
 ## Usage
 
@@ -49,9 +54,9 @@ The mod needs both files. Without `BudgetBooster.Logic.dll` it still loads and s
 |---------|-------|-------------|
 | **Enable Budget Booster** | On/Off | Master toggle |
 | **Boost Mode** | Dropdown | Auto-Balance, Fixed Boost, or Percentage |
-| **Boost Amount** | $10K - $10M | Money added per cycle |
-| **Target Surplus** | $0 - $5M | Balance threshold (Auto-Balance mode) |
-| **Boost Percentage** | 1% - 100% | Percentage of city expenses (Percentage mode) |
+| **Boost Amount** | $10K - $10M | Fixed Boost: added every cycle. Auto-Balance: added on top of the top-up. Percentage: base for the fallback only |
+| **Target Surplus** | $0 - $5M | Balance Auto-Balance tops you back up to |
+| **Boost Percentage** | 1% - 100% | Share of daily city expenses paid back (Percentage mode) |
 | **Max Boost Per Cycle** | $100K - $100M | Safety cap |
 | **Update Interval** | 16 - 1024 ticks | Simulation ticks between checks (256 is about 1.4 in-game minutes) |
 | **Enable Notifications** | On/Off | Show log notifications for boosts |
@@ -60,22 +65,26 @@ The mod needs both files. Without `BudgetBooster.Logic.dll` it still loads and s
 
 ### Boost Modes
 
-**Auto-Balance** is the one I'd recommend for most players. It monitors your budget and only steps in when the balance drops below Target Surplus. When it does, it adds enough to recover, plus Boost Amount.
+**Auto-Balance** is the one I'd recommend for most players. It monitors your budget and only steps in when the balance drops below Target Surplus. When it does, it adds what it takes to get back to Target Surplus, plus Boost Amount, up to Max Boost Per Cycle. At a balance of -$2,000,000 with the default settings, that is $2,150,000.
 
 **Fixed Boost** is the sandbox mode. It adds Boost Amount every update cycle, so you get a guaranteed income stream. Use it for creative building where money shouldn't matter.
 
-**Percentage** is the scaling mode. It queries actual city expenses from `CityServiceBudgetSystem` and calculates the boost as a percentage of total city expenses, so larger cities with higher expenses get proportionally more. If expense data is unavailable, it falls back to Boost Amount. It suits growing cities where you want the boost to scale with the city.
+**Percentage** is the scaling mode. It reads your city's daily expenses from `CityServiceBudgetSystem` and pays back Boost Percentage of them, spread across the cycles in a day. At 25%, a city spending $1,000,000 a day gets about $250,000 a day, which at the default interval of 256 ticks is $244 per cycle. Larger cities with higher expenses get proportionally more. Each cycle's share is rounded down to whole dollars, so small shares at short intervals come to $0: at an interval of 16 ticks and 10%, a city spending under $163,840 a day gets nothing. If expense data is unavailable, it adds Boost Percentage of Boost Amount every cycle instead, at least $10,000. It suits growing cities where you want the boost to scale with the city.
+
+In every mode the mod never adds more than Max Boost Per Cycle in one cycle, and never pushes your balance past the game's $2,000,000,000 ceiling.
 
 ## Quick Presets
 
 The settings menu has one-click presets:
 
-| Preset | Mode | Boost | Best For |
-|--------|------|-------|----------|
-| **Casual Builder** | Auto-Balance | $250K | Light help that still leaves some challenge |
-| **Sandbox Mode** | Fixed Boost | $5M | Building without limits |
-| **Growing City** | Percentage (25%) | Scales | A boost that grows with the city |
-| **Emergency Only** | Auto-Balance | $50K at $0 | A safety net against bankruptcy and nothing more |
+| Preset | Mode | Boost | Interval | Max Per Cycle | Notifications | Best For |
+|--------|------|-------|----------|---------------|---------------|----------|
+| **Casual Builder** | Auto-Balance | Back to $100K, plus $250K | 512 ticks | $1M | Minimal, $500K and up | Light help that still leaves some challenge |
+| **Sandbox Mode** | Fixed Boost | $5M every cycle | 64 ticks | $50M | Off | Building without limits |
+| **Growing City** | Percentage | 25% of daily expenses (fallback base $500K) | 256 ticks | $5M | Normal | A boost that grows with the city |
+| **Emergency Only** | Auto-Balance | Back to $0, plus $50K | 256 ticks | $500K | Detailed | A safety net against bankruptcy and nothing more |
+
+Every preset also turns the mod on. Settings a preset does not list keep their current values.
 
 ## Building from Source
 
@@ -94,7 +103,7 @@ The settings menu has one-click presets:
    ```
    Or pass it once on the command line, which reaches both: `dotnet build -p:CitiesPath="D:\Games\Cities Skylines II"`
 3. Build the solution (or run `dotnet build` in the repo root, which picks up the `.sln`)
-4. Both DLLs are copied to your local mods folder automatically
+4. `BudgetBooster.dll`, `BudgetBooster.Logic.bin` and this README are copied to your local mods folder automatically. A stale `BudgetBooster.Logic.dll` there is deleted. `dotnet clean` removes all of them again.
 
 ### Using Official Toolchain
 
@@ -109,14 +118,14 @@ BudgetBooster/
 ├── Mod.cs                   # Main mod entry point (IMod implementation) with diagnostics
 ├── ModSettings.cs           # Settings with UI attributes, validation and presets
 ├── SessionStatistics.cs     # In-memory session counters
-├── BudgetBoosterSystem.cs   # ECS system that applies boosts with expense tracking
-├── PlayerMoneyAccessor.cs   # Dedicated reflection accessor with error recovery
+├── BudgetBoosterSystem.cs   # ECS system that reads the balance and applies boosts
+├── BoostLimits.cs           # Host-side clamp: Max Boost Per Cycle and the $2B ceiling
 ├── IBoostLogic.cs           # Interface between the host and the reloadable logic
-├── LogicHost.cs             # Loads BudgetBooster.Logic.dll and handles Reload Boost Logic
-├── Patches.cs               # System registration tracking
+├── LogicHost.cs             # Loads BudgetBooster.Logic.bin and handles Reload Boost Logic
 ├── Logic/
-│   ├── BudgetBooster.Logic.csproj  # Logic project (BudgetBooster.Logic.dll)
-│   └── BoostLogic.cs        # The boost calculation
+│   ├── BudgetBooster.Logic.csproj  # Logic project (built as .dll, deployed as BudgetBooster.Logic.bin)
+│   ├── BoostLogic.cs        # The boost calculation
+│   └── BoostFormulas.cs     # The arithmetic behind it, as plain functions
 ├── Localization/
 │   └── LocaleEN.cs          # English localization strings
 ├── Properties/
@@ -154,10 +163,17 @@ A:
 A: It's how often (in game ticks) the mod checks your balance and applies boosts. Lower numbers mean more frequent checks. The game runs 262,144 ticks per in-game day, so these are short gaps: 16 ticks is about 5 in-game seconds, 256 about 1.4 in-game minutes, and the maximum of 1024 about 5.6 in-game minutes.
 
 **Q: Is Percentage mode using my actual city expenses?**
-A: Yes, as of v1.3.0. It reads your city's total expenses from the game's `CityServiceBudgetSystem`,
+A: Yes, as of v1.4.0. It reads your city's daily expenses from the game's `CityServiceBudgetSystem`,
 the same source the in-game budget panel uses. Earlier versions always fell back to scaling your Boost
 Amount instead. If expenses read as $0 (a brand-new city, or the budget system being unavailable), it
-still falls back to that calculation. **Run Diagnostics** reports which path is in use.
+still falls back to that calculation. **Run Diagnostics** reports which path is in use, as a line like
+`Percentage path: expenses ($1,000,000/day)` or `Percentage path: fallback (Boost Amount)`.
+
+**Q: Why did my Percentage boosts get so much smaller in v1.5.0?**
+A: Versions 1.4.0 and 1.4.1 added the chosen percentage of a whole day's expenses every cycle. A day
+has 1,024 cycles at the default interval, so the mod paid out about 1,000 times what the setting
+said. v1.5.0 spreads the percentage across the day as intended. Raise Boost Percentage for more, up
+to 100% of what the city spends, or use Fixed Boost for larger amounts.
 
 **Q: Why did my statistics reset to zero?**
 A: Session statistics count only the current game session and start at zero each time you launch
@@ -173,8 +189,10 @@ A: Check that you have write permissions to:
 **Q: Is this mod compatible with other economy mods?**
 A: It may conflict with mods that also modify `PlayerMoney` (like Economy Rebalance, RealEco). Test carefully if you use more than one economy mod.
 
-**Q: Why does the mod use reflection?**
-A: The `PlayerMoney.m_Money` field is private. The mod reads the current balance through cached reflection in `PlayerMoneyAccessor`. This is the safest way to access game internals without Harmony patches.
+**Q: Does the mod work with the game's Unlimited Money option?**
+A: It stays out of the way. With Unlimited Money on, the game reports your balance as $2,000,000,000
+whatever it really is, so the mod adds nothing and records nothing until you turn the option off. The
+log says `Skipping boost cycles: Unlimited Money is on` once when this starts.
 
 **Q: Will the mod break after game updates?**
 A: Possibly. Major updates (especially economy changes) may require a mod update. After patches like Bridges & Ports or Bike Patch, check for an updated version.
@@ -183,10 +201,10 @@ A: Possibly. Major updates (especially economy changes) may require a mod update
 
 ### Mod Not Appearing in Options
 
-1. Make sure both DLLs are in the correct folder:
-   `%LOCALAPPDATA%Low\Colossal Order\Cities Skylines II\Mods\BudgetBooster\` should contain `BudgetBooster.dll` and `BudgetBooster.Logic.dll`
+1. Make sure both files are in the correct folder:
+   `%LOCALAPPDATA%Low\Colossal Order\Cities Skylines II\Mods\BudgetBooster\` should contain `BudgetBooster.dll` and `BudgetBooster.Logic.bin`
 2. Check the game's log file for errors (see "Checking Logs" below)
-3. Check that you're on a compatible game version (1.4.x)
+3. Check that you're on a compatible game version (1.6.x)
 4. Try a clean rebuild (`dotnet clean && dotnet build`)
 5. Restart the game completely (not just reload)
 
@@ -212,9 +230,11 @@ Things to try:
 1. Check that the mod is **Enabled** in settings
 2. In **Auto-Balance** mode, boosts only apply when balance < Target Surplus
 3. Check the **Update Interval**. Higher values mean less frequent boosts
-4. Enable **Debug Mode** and check `Budget Booster.log` for cycle information
-5. If the log says `Failed to load boost logic`, `BudgetBooster.Logic.dll` is missing or broken. The rest of that log line says which
-6. Click **Run Diagnostics** to generate a full system report
+4. Check that the game's **Unlimited Money** option is off. While it is on, the mod adds nothing
+5. Boosts only happen while a city is loaded and the game is not paused
+6. Enable **Debug Mode** and **Log Applied Boosts**, then check `Budget Booster.log` for `Boost cycle` lines
+7. If the log says `Failed to load boost logic`, `BudgetBooster.Logic.bin` is missing or broken. The rest of that log line says which
+8. Click **Run Diagnostics** to generate a full system report
 
 ### Sliders Not Responding
 
@@ -223,12 +243,14 @@ Things to try:
 3. Check for conflicts with other mods that modify the options UI
 4. Click **Reset to Defaults** and reconfigure
 
-### Balance Shows $0 or Incorrect Value
+### Current Balance Shows $0 or an Old Value
 
-This means the `PlayerMoney` reflection may be failing:
-1. Click **Run Diagnostics** in Debug settings
-2. Check `Budget Booster.log` for "PlayerMoneyAccessor" messages
-3. After a game update, the mod may need recompilation
+**Current Balance** in Session Statistics is the balance the mod saw on its last cycle. It stays at $0
+until a cycle has run in a loaded, unpaused city, and it stops updating while the mod is disabled or
+Unlimited Money is on.
+1. Click **Run Diagnostics** in Debug settings, with a city loaded and the game unpaused
+2. In `Budget Booster.log`, the `CITY DIAGNOSTICS` block shows `Current Balance` and `Unlimited Money` as the game reports them
+3. If those look wrong after a game update, the mod may need recompilation
 4. If it persists, report the issue with your game version
 
 ### Checking Logs
@@ -245,39 +267,44 @@ To check it:
 4. Look at the lines tagged `[Budget Booster]`
 
 What to look for:
-- `PlayerMoneyAccessor: Field 'm_Money' cached` means balance reading works
+- `v1.5.0 loading...` near the top tells you which version is running
 - `Settings loaded from storage` means settings are being read
-- `Logic loaded (generation 1)` means the boost logic DLL was found and loaded
-- `Failed to load boost logic` means `BudgetBooster.Logic.dll` is missing or broken, and no boosts will be applied
+- `Logic loaded (generation 1)` means the boost logic file was found and loaded
+- `Failed to load boost logic` means `BudgetBooster.Logic.bin` is missing or broken, and no boosts will be applied
+- `loaded successfully!` means everything loaded. `loaded with errors:` is followed by what failed
+- `Skipping boost cycles:` says why the mod is idle (for example Unlimited Money), once per change
 - Other error messages will tell you what's failing
 
 ### Debugging Issues
 
 1. Enable **Debug Mode** in the mod settings
-2. Enable **Log Boost Cycles** for detailed per-cycle logging
+2. Enable **Log Applied Boosts** for one line per boost (cycles that add nothing are not logged)
 3. Enable **Log Game State** for periodic balance reports
 4. Click **Run Diagnostics** to generate a full system report
 5. Open `Budget Booster.log` in: `%LOCALAPPDATA%Low\Colossal Order\Cities Skylines II\Logs\`
 6. Look for `[Budget Booster]` entries in the log
-7. The diagnostic report shows:
-   - System initialization status
-   - PlayerMoneyAccessor status and success rate
-   - PlayerMoney API availability
-   - CityServiceBudgets (expense data) availability
+7. The diagnostic report is written in two parts. Straight away, `BUDGET BOOSTER DIAGNOSTIC REPORT` shows:
+   - Mod version, whether it loaded, and any load error
+   - Boost logic status: file path, generation, last error
    - Current settings and session statistics
+8. Once a city is loaded and unpaused, `CITY DIAGNOSTICS` follows with:
+   - System initialization status
+   - Current balance and the Unlimited Money flag
+   - Raw expense and income figures from `CityServiceBudgetSystem`
+   - Which Percentage path is in use (`expenses ($X/day)` or `fallback (Boost Amount)`)
 
 ### Reporting Issues
 
 When reporting a bug, please include:
-1. Game version (e.g., 1.4.2f1)
-2. Mod version (shown in settings title)
+1. Game version (e.g., 1.6.0f1)
+2. Mod version (the `Mod Version` line from **Run Diagnostics**, or the `v1.5.0 loading...` line at the top of `Budget Booster.log`)
 3. Relevant sections of `Budget Booster.log`
 4. Output from **Run Diagnostics**
 5. Steps to reproduce the issue
 
 ## Compatibility
 
-- Game version: Cities: Skylines II 1.4.x (tested with 1.4.2f1)
+- Game version: Cities: Skylines II 1.6.x (built against 1.6.0f1)
 - Minimum version: 1.1.0f1 (official modding toolchain required)
 - Framework: official Colossal Order Modding Toolchain
 - Conflicts: may conflict with other economy mods (e.g., Economy Rebalance, RealEco)
@@ -300,6 +327,12 @@ The mod uses the official modding API:
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md) for the full history.
+
+### v1.5.0
+- Changed: Percentage mode pays back the chosen share of daily expenses, spread across the day. It used to pay that share of a whole day's expenses every cycle, so boosts in this mode are now much smaller.
+- Fixed: Boosts at the $2B ceiling are counted as what was actually added, and the balance can no longer wrap to -$2B.
+- Fixed: The mod stays idle while Unlimited Money is on, and reads the balance through the game's public API instead of reflection.
+- Changed: The logic file is deployed as `BudgetBooster.Logic.bin`.
 
 ### v1.3.0
 - Added: Percentage mode now scales with your city's real expenses via `CityServiceBudgetSystem`. It previously always used a hardcoded fallback, so it never actually scaled with the city.

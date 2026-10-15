@@ -35,7 +35,9 @@ namespace BudgetBooster
         public const string LegacySettingsSection = "Budget Booster";
 
         /// <summary>
-        /// Bumped whenever a settings migration is added. Persisted values below this trigger migration.
+        /// The version the last step in Mod.MigrateSettings upgrades to. Raising it on its own does
+        /// nothing useful: add the migration step first, gated on the version it upgrades from, then
+        /// raise this to match.
         /// </summary>
         public const int CurrentSettingsVersion = 1;
 
@@ -71,7 +73,7 @@ namespace BudgetBooster
         public enum BoostModeType
         {
             /// <summary>
-            /// Only adds money when budget goes negative.
+            /// Below Target Surplus, adds what it takes to get back to it plus Boost Amount.
             /// </summary>
             AutoBalance,
             
@@ -81,7 +83,7 @@ namespace BudgetBooster
             FixedBoost,
             
             /// <summary>
-            /// Adds money based on current expenses (percentage).
+            /// Adds a percentage of the city's daily expenses, spread across the cycles in a day.
             /// </summary>
             Percentage
         }
@@ -188,8 +190,8 @@ namespace BudgetBooster
         {
             Enabled = true;
             BoostMode = BoostModeType.Percentage;
-            BoostAmount = 500000;       // Base $500K for percentage calc
-            BoostPercentage = 25;       // 25% of base = $125K per cycle
+            BoostAmount = 500000;       // Base for the fallback path only: 25% = $125K per cycle
+            BoostPercentage = 25;       // 25% of daily expenses, spread across the day's cycles
             UpdateInterval = 256;        // ~1.4 in-game minutes between checks
             MaxBoostPerCycle = 5000000;  // Max $5M per cycle
             EnableNotifications = true;
@@ -205,7 +207,7 @@ namespace BudgetBooster
             Enabled = true;
             BoostMode = BoostModeType.AutoBalance;
             BoostAmount = 50000;        // Small $50K boost
-            TargetSurplus = 0;          // Only when at $0 or negative
+            TargetSurplus = 0;          // Only when the balance is below $0
             UpdateInterval = 256;        // ~1.4 in-game minutes between checks
             MaxBoostPerCycle = 500000;   // Max $500K per cycle
             EnableNotifications = true;
@@ -245,7 +247,8 @@ namespace BudgetBooster
         public bool HideBoostPercentage => BoostMode != BoostModeType.Percentage;
 
         /// <summary>
-        /// Percentage of Boost Amount to add (for Percentage mode).
+        /// Percentage of the city's daily expenses to add (for Percentage mode), or of Boost Amount
+        /// per cycle when expense data is unavailable.
         /// Slider range: 1% to 100%
         /// </summary>
         [SettingsUISection(SectionMain, GroupBoostSettings)]
@@ -407,7 +410,7 @@ namespace BudgetBooster
         public bool DebugMode { get; set; } = false;
 
         /// <summary>
-        /// Log every boost cycle (can be verbose).
+        /// Log each boost that adds money. Cycles that add nothing are not logged.
         /// </summary>
         [SettingsUISection(SectionMain, GroupDebug)]
         [SettingsUIHideByCondition(typeof(ModSettings), nameof(HideDebugOptions))]
@@ -427,6 +430,9 @@ namespace BudgetBooster
 
         /// <summary>
         /// Button to run diagnostics and log system status.
+        /// Writes everything that needs no city straight away. The city figures need the EntityManager,
+        /// which this UI callback must not touch, so they are requested from the simulation system and
+        /// written on its next tick.
         /// </summary>
         [SettingsUISection(SectionMain, GroupDebug)]
         [SettingsUIButton]
@@ -434,13 +440,14 @@ namespace BudgetBooster
         {
             set
             {
-                DiagnosticsRequested = true;
-                Mod.Log.Info("[Budget Booster] Diagnostics requested - check log for results");
+                Mod.LogDiagnosticReport();
+                BudgetBoosterSystem.RequestCityDiagnostics();
+                Mod.Log.Info("[Budget Booster] Diagnostics written. City figures follow once a city is loaded and unpaused.");
             }
         }
 
         /// <summary>
-        /// Reloads BudgetBooster.Logic.dll from disk without restarting the game.
+        /// Reloads BudgetBooster.Logic.bin from disk without restarting the game.
         /// The new build is staged here and swapped in at the top of the next simulation update.
         /// </summary>
         [SettingsUISection(SectionMain, GroupDebug)]
@@ -451,7 +458,7 @@ namespace BudgetBooster
             {
                 if (LogicHost.RequestReload())
                 {
-                    Mod.Log.Info("[Budget Booster] Boost logic reload staged - applies on the next update");
+                    Mod.Log.Info("[Budget Booster] Boost logic reload staged - applies on the next simulation tick (needs a loaded, unpaused city)");
                 }
                 else
                 {
@@ -459,12 +466,6 @@ namespace BudgetBooster
                 }
             }
         }
-
-        /// <summary>
-        /// Internal flag to signal diagnostics should run.
-        /// </summary>
-        [SettingsUIHidden]
-        public bool DiagnosticsRequested { get; set; } = false;
 
         /// <summary>
         /// Persisted schema version, used to run one-time settings migrations.
@@ -516,7 +517,6 @@ namespace BudgetBooster
             DebugMode = false;
             LogBoostCycles = true;
             LogGameState = true;
-            DiagnosticsRequested = false;
 
             // Statistics are session state, not settings, and are deliberately not touched here.
             // LoadSettings constructs throwaway default instances, so resetting them from SetDefaults

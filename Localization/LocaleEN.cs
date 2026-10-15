@@ -46,26 +46,26 @@ namespace BudgetBooster.Localization
                 { _settings.GetOptionGroupLocaleID(ModSettings.GroupPresets), "Quick Presets" },
 
                 { _settings.GetOptionLabelLocaleID(nameof(ModSettings.PresetCasualBuilder)), "Casual Builder" },
-                { _settings.GetOptionDescLocaleID(nameof(ModSettings.PresetCasualBuilder)), "Auto-Balance mode with a gentle boost ($250K). Tops up your balance when it runs low, but leaves some challenge." },
+                { _settings.GetOptionDescLocaleID(nameof(ModSettings.PresetCasualBuilder)), "Turns the mod on in Auto-Balance mode. Sets Boost Amount $250K, Target Surplus $100K, Update Interval 512 ticks (about 2.8 in-game minutes), Max Boost Per Cycle $1M, and Minimal notifications for boosts of $500K or more. A top-up from just under $100K is about $250K, so you only hear about bigger rescues." },
 
                 { _settings.GetOptionLabelLocaleID(nameof(ModSettings.PresetSandboxMode)), "Sandbox Mode" },
-                { _settings.GetOptionDescLocaleID(nameof(ModSettings.PresetSandboxMode)), "Fixed mode with the maximum boost ($5M). Unlimited money for building freely. Notifications disabled." },
+                { _settings.GetOptionDescLocaleID(nameof(ModSettings.PresetSandboxMode)), "Turns the mod on in Fixed Boost mode. Sets Boost Amount $5M, Update Interval 64 ticks (about 21 in-game seconds), Max Boost Per Cycle $50M, and turns notifications off. Adds $5M every cycle." },
 
                 { _settings.GetOptionLabelLocaleID(nameof(ModSettings.PresetGrowingCity)), "Growing City" },
-                { _settings.GetOptionDescLocaleID(nameof(ModSettings.PresetGrowingCity)), "Percentage mode (25%). The boost scales with your city, so you don't have to manage finances closely." },
+                { _settings.GetOptionDescLocaleID(nameof(ModSettings.PresetGrowingCity)), "Turns the mod on in Percentage mode. Sets Boost Percentage 25% (a quarter of what your city spends each day), Boost Amount $500K (used only if expense data is unavailable: $125K per cycle), Update Interval 256 ticks, Max Boost Per Cycle $5M, and Normal notifications." },
 
                 { _settings.GetOptionLabelLocaleID(nameof(ModSettings.PresetEmergencyOnly)), "Emergency Only" },
-                { _settings.GetOptionDescLocaleID(nameof(ModSettings.PresetEmergencyOnly)), "Minimal intervention. Only adds money when your balance hits $0." },
+                { _settings.GetOptionDescLocaleID(nameof(ModSettings.PresetEmergencyOnly)), "Turns the mod on in Auto-Balance mode. Sets Target Surplus $0, Boost Amount $50K, Update Interval 256 ticks, Max Boost Per Cycle $500K, and Detailed notifications. Adds money only when your balance is below $0: enough to get back to $0, plus $50K." },
 
                 // Boost Settings (Sliders)
                 { _settings.GetOptionLabelLocaleID(nameof(ModSettings.BoostAmount)), "Boost Amount ($)" },
-                { _settings.GetOptionDescLocaleID(nameof(ModSettings.BoostAmount)), "Base amount used for calculations. Auto-Balance: added when balance is low. Fixed Boost: added every cycle. Percentage: base for percentage calculation." },
+                { _settings.GetOptionDescLocaleID(nameof(ModSettings.BoostAmount)), "Auto-Balance: added on top of what it takes to get back to Target Surplus. Fixed Boost: added every cycle. Percentage: only used when expense data is unavailable, as the base the percentage is taken from." },
 
                 { _settings.GetOptionLabelLocaleID(nameof(ModSettings.TargetSurplus)), "Target Surplus ($)" },
-                { _settings.GetOptionDescLocaleID(nameof(ModSettings.TargetSurplus)), "Minimum balance to maintain. When your balance falls below this, the Boost Amount is added to bring you back up." },
+                { _settings.GetOptionDescLocaleID(nameof(ModSettings.TargetSurplus)), "Auto-Balance only. When your balance is below this, the mod adds enough to get back to it, plus Boost Amount, up to Max Boost Per Cycle." },
 
                 { _settings.GetOptionLabelLocaleID(nameof(ModSettings.BoostPercentage)), "Boost Percentage" },
-                { _settings.GetOptionDescLocaleID(nameof(ModSettings.BoostPercentage)), "Percentage of your city's total expenses to add each cycle (e.g., 10% of $100,000 expenses = $10,000 boost). If expense data is unavailable, this scales Boost Amount instead." },
+                { _settings.GetOptionDescLocaleID(nameof(ModSettings.BoostPercentage)), "Share of your city's daily expenses to add, spread across the day's cycles. At 10%, a city spending $1,000,000 a day gets about $100,000 a day. Each cycle's share is rounded down to whole dollars, so small shares at short Update Intervals come to $0: at 16 ticks and 10%, a city spending under $163,840 a day gets nothing. If expense data is unavailable, adds this percentage of Boost Amount every cycle instead (at least $10,000)." },
 
                 // Notification Settings
                 { _settings.GetOptionLabelLocaleID(nameof(ModSettings.EnableNotifications)), "Enable Notifications" },
@@ -80,7 +80,7 @@ namespace BudgetBooster.Localization
                 { _settings.GetEnumValueLocaleID(ModSettings.NotificationLevel.Detailed), "Detailed" },
 
                 { _settings.GetOptionLabelLocaleID(nameof(ModSettings.MinimalNotificationThreshold)), "Minimal Notification Threshold ($)" },
-                { _settings.GetOptionDescLocaleID(nameof(ModSettings.MinimalNotificationThreshold)), "Only show notifications for boosts larger than this amount (when using Minimal level)." },
+                { _settings.GetOptionDescLocaleID(nameof(ModSettings.MinimalNotificationThreshold)), "Only show notifications for boosts of this amount or larger (when using Minimal level)." },
 
                 // Statistics Settings
                 { _settings.GetOptionLabelLocaleID(nameof(ModSettings.TotalBoostsDisplay)), "Total Boosts This Session" },
@@ -115,17 +115,17 @@ namespace BudgetBooster.Localization
                 { _settings.GetOptionLabelLocaleID(nameof(ModSettings.DebugMode)), "Enable Debug Mode" },
                 { _settings.GetOptionDescLocaleID(nameof(ModSettings.DebugMode)), "Enable detailed logging for troubleshooting. Output goes to Logs\\Budget Booster.log." },
 
-                { _settings.GetOptionLabelLocaleID(nameof(ModSettings.LogBoostCycles)), "Log Boost Cycles" },
-                { _settings.GetOptionDescLocaleID(nameof(ModSettings.LogBoostCycles)), "Log detailed information every time a boost is applied." },
+                { _settings.GetOptionLabelLocaleID(nameof(ModSettings.LogBoostCycles)), "Log Applied Boosts" },
+                { _settings.GetOptionDescLocaleID(nameof(ModSettings.LogBoostCycles)), "Write one log line for each cycle that adds money: mode, balance before and after, and the amount asked for and applied. Cycles that add nothing are not logged." },
 
                 { _settings.GetOptionLabelLocaleID(nameof(ModSettings.LogGameState)), "Log Game State" },
                 { _settings.GetOptionDescLocaleID(nameof(ModSettings.LogGameState)), "Periodically log game state including current balance." },
 
                 { _settings.GetOptionLabelLocaleID(nameof(ModSettings.RunDiagnostics)), "Run Diagnostics" },
-                { _settings.GetOptionDescLocaleID(nameof(ModSettings.RunDiagnostics)), "Run a diagnostic check and write detailed system status to Logs\\Budget Booster.log." },
+                { _settings.GetOptionDescLocaleID(nameof(ModSettings.RunDiagnostics)), "Write a status report to Logs\\Budget Booster.log: mod version, load errors, boost logic, settings and session statistics straight away. City figures (balance, Unlimited Money, expenses, which Percentage path is used) follow once a city is loaded and unpaused." },
 
                 { _settings.GetOptionLabelLocaleID(nameof(ModSettings.ReloadBoostLogic)), "Reload Boost Logic" },
-                { _settings.GetOptionDescLocaleID(nameof(ModSettings.ReloadBoostLogic)), "Reload the boost calculation from disk without restarting the game. Intended for mod development: rebuild BudgetBooster.Logic.dll, then click this. Your settings and statistics are unaffected." },
+                { _settings.GetOptionDescLocaleID(nameof(ModSettings.ReloadBoostLogic)), "Reload the boost calculation from disk without restarting the game. Intended for mod development: rebuild the logic project (deployed as BudgetBooster.Logic.bin), then click this. The new logic takes over on the next simulation tick, so a city must be loaded and unpaused. Your settings and statistics are unaffected." },
             };
         }
 
