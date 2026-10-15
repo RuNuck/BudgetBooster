@@ -327,7 +327,7 @@ namespace BudgetBooster
                     break;
             }
 
-            // Send the notification (via log - appears in Player.log)
+            // Send the notification (via log - appears in Logs\Budget Booster.log)
             if (shouldNotify && !string.IsNullOrEmpty(notificationMessage))
             {
                 Mod.Log.Info(notificationMessage);

@@ -16,7 +16,7 @@ namespace BudgetBooster
     public class Mod : IMod
     {
         public const string ModName = "Budget Booster";
-        public const string ModVersion = "1.4.0";
+        public const string ModVersion = "1.4.1";
 
         public static readonly ILog Log = LogManager.GetLogger(ModName);
 

@@ -5,6 +5,29 @@ All notable changes to Budget Booster are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] - 2026-10-15
+
+### Fixed
+- The README's install and build steps now cover `BudgetBooster.Logic.dll`. They only mentioned
+  `BudgetBooster.dll`, and without the logic DLL the mod loads but never adds money. The build steps
+  now point at `BudgetBooster.sln`, which builds both.
+- The README and the Debug Mode and Run Diagnostics tooltips sent users to `Player.log`. The mod
+  writes to `Logs\Budget Booster.log`. The README's list of log lines to look for also quoted two
+  lines the code never writes; it now lists real ones.
+- Update Interval was documented as "256 ticks = about 1 in-game day". A day is 262,144 simulation
+  ticks (`TimeSystem.kTicksPerDay`) and the boost system runs once per tick, so 256 ticks is about
+  1.4 in-game minutes. The README, the tooltip and the preset comments now give real figures.
+  Behaviour is unchanged; only the description was wrong.
+
+### Removed
+- The README's MIT License line. The repository never had a LICENSE file.
+
+### Changed
+- Preset button labels no longer start with an emoji, and the four preset tooltips now say what
+  each preset sets instead of selling it.
+- Plainer wording in the README, this changelog and the Paradox Mods description. No documented
+  facts changed.
+
 ## [1.4.0] - 2026-08-12
 
 ### Added
@@ -14,8 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   without restarting or reloading your city. Settings and session statistics are untouched.
 - Raw API values in the diagnostics report (`Raw GetTotalExpenses()`, `Raw GetTotalIncome()`) and in
   the periodic game state report. Sign conventions are the most common source of readings that look
-  plausible but are wrong — the v1.3.0 expense bug survived a clean build and a success log line
-  precisely because only the interpreted value was ever printed.
+  plausible but are wrong. The v1.3.0 expense bug survived a clean build and a success log line
+  because only the interpreted value was ever printed.
 
 ### Changed
 - Split responsibilities along the reload seam: the host owns *plumbing* (ECS lookups, reflection,
@@ -23,14 +46,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Every defect found so far has been interpretation, so this puts that class of bug on the
   reloadable side.
 - The host has no fallback boost calculation. If logic is missing or throws, no boost is applied and
-  it says so loudly. A silent host-side fallback would mask a broken logic build behind plausible
-  behaviour.
+  the host reports the failure. A silent host-side fallback would hide a broken logic build behind
+  plausible behaviour.
 
 ### Notes
-- The byte-load is the **only** load path — release builds use it too. A development-only loading
+- The byte-load is the **only** load path, and release builds use it too. A development-only loading
   route that differs from the shipped one is how a bug survives testing.
-- Mono cannot unload assemblies, so each reload leaks the previous copy (a few tens of KB). This is
-  irrelevant next to not restarting a city, and does not affect players, who load once.
+- Mono cannot unload assemblies, so each reload leaks the previous copy (a few tens of KB). That is a
+  small cost next to restarting a city, and it does not affect players, who load once.
 - Changes to `IBoostLogic`, `IBoostContext`, `ModSettings`, localization, or the ECS system still
   require a full restart. Only the logic assembly's internals are reloadable.
 
@@ -38,7 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Percentage mode now uses real city expenses.** `GetTotalCityExpenses()` returned a hardcoded `0`,
-  so the mode silently took its fallback path on every cycle since it was introduced — it never once
+  so the mode silently took its fallback path on every cycle since it was introduced and never
   scaled with a city. It now reads `GetTotalExpenses()` from `Game.Simulation.CityServiceBudgetSystem`,
   the public `ICityServiceBudgetSystem` the in-game budget panel uses.
 - `HasValidBudgetSystem` on `BudgetBoosterSystem`, and expense figures plus read-failure counts in the
@@ -46,7 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Documentation and the in-game Boost Percentage tooltip claimed city expense data was not exposed to
-  mods. It is, and has been.
+  mods. It is exposed, and always has been.
 
 ### Notes
 - The budget system is treated as optional. If it cannot be obtained, or a read throws, or the city has
@@ -59,7 +82,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **"Session Statistics" reported lifetime totals.** The four counters were public get/set
-  properties on `ModSettings`, and every such property is written to `BudgetBooster.coc` —
+  properties on `ModSettings`, and every such property is written to `BudgetBooster.coc`.
   `[SettingsUIHidden]` only hides a property from the options UI, it does not opt out of
   serialization. The panel therefore accumulated across restarts while labelled "this session"
   and "since the game started". Observed in the wild: 95 boosts / $163,267,755 persisted in a
@@ -110,7 +133,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Quick Preset buttons (Casual Builder, Sandbox Mode, Growing City, Emergency Only)
-- Comprehensive FAQ section in documentation
+- FAQ section in documentation
 
 ### Changed
 - Refactored `PlayerMoneyAccessor` for centralized reflection with error recovery
@@ -123,7 +146,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Notification system with three verbosity levels (Minimal, Normal, Detailed)
 - Session statistics display (total boosts, money added, last boost, current balance)
-- Debug & Diagnostics section with comprehensive system diagnostics
+- Debug & Diagnostics section with system diagnostics
 - Settings validation with automatic correction of out-of-bounds values
 - Harmony patch status tracking for troubleshooting
 

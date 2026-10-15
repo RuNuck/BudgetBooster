@@ -30,7 +30,7 @@ namespace BudgetBooster.Logic
         /// Bump this when iterating so the log makes it obvious which build is live. This is the
         /// fastest way to confirm a reload actually took effect.
         /// </summary>
-        private const string BuildTag = "BoostLogic 1.4.0";
+        private const string BuildTag = "BoostLogic 1.4.1";
 
         public string Describe() => BuildTag;
 

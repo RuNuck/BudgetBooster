@@ -8,7 +8,7 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
 
-    <Version>1.4.0</Version>
+    <Version>1.4.1</Version>
     <Product>Budget Booster Logic</Product>
     <Description>Reloadable boost logic for Budget Booster. Loaded from bytes by the host assembly so it can be swapped without restarting the game.</Description>
     <Copyright>Copyright © 2026</Copyright>

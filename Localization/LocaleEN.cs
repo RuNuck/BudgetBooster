@@ -45,17 +45,17 @@ namespace BudgetBooster.Localization
                 // Preset Configurations Group
                 { _settings.GetOptionGroupLocaleID(ModSettings.GroupPresets), "Quick Presets" },
 
-                { _settings.GetOptionLabelLocaleID(nameof(ModSettings.PresetCasualBuilder)), "🎨 Casual Builder" },
-                { _settings.GetOptionDescLocaleID(nameof(ModSettings.PresetCasualBuilder)), "Gentle boost ($250K) with Auto-Balance mode. Perfect for stress-free building while maintaining some challenge." },
+                { _settings.GetOptionLabelLocaleID(nameof(ModSettings.PresetCasualBuilder)), "Casual Builder" },
+                { _settings.GetOptionDescLocaleID(nameof(ModSettings.PresetCasualBuilder)), "Auto-Balance mode with a gentle boost ($250K). Tops up your balance when it runs low, but leaves some challenge." },
 
-                { _settings.GetOptionLabelLocaleID(nameof(ModSettings.PresetSandboxMode)), "🏗️ Sandbox Mode" },
-                { _settings.GetOptionDescLocaleID(nameof(ModSettings.PresetSandboxMode)), "Maximum boost ($5M) with Fixed mode. Unlimited money for pure creative building. Notifications disabled." },
+                { _settings.GetOptionLabelLocaleID(nameof(ModSettings.PresetSandboxMode)), "Sandbox Mode" },
+                { _settings.GetOptionDescLocaleID(nameof(ModSettings.PresetSandboxMode)), "Fixed mode with the maximum boost ($5M). Unlimited money for building freely. Notifications disabled." },
 
-                { _settings.GetOptionLabelLocaleID(nameof(ModSettings.PresetGrowingCity)), "📈 Growing City" },
-                { _settings.GetOptionDescLocaleID(nameof(ModSettings.PresetGrowingCity)), "Percentage mode (25%) that scales with your city. Great for organic growth without micromanaging finances." },
+                { _settings.GetOptionLabelLocaleID(nameof(ModSettings.PresetGrowingCity)), "Growing City" },
+                { _settings.GetOptionDescLocaleID(nameof(ModSettings.PresetGrowingCity)), "Percentage mode (25%). The boost scales with your city, so you don't have to manage finances closely." },
 
-                { _settings.GetOptionLabelLocaleID(nameof(ModSettings.PresetEmergencyOnly)), "🚨 Emergency Only" },
-                { _settings.GetOptionDescLocaleID(nameof(ModSettings.PresetEmergencyOnly)), "Minimal intervention - only adds money when you hit $0. A safety net that feels fair." },
+                { _settings.GetOptionLabelLocaleID(nameof(ModSettings.PresetEmergencyOnly)), "Emergency Only" },
+                { _settings.GetOptionDescLocaleID(nameof(ModSettings.PresetEmergencyOnly)), "Minimal intervention. Only adds money when your balance hits $0." },
 
                 // Boost Settings (Sliders)
                 { _settings.GetOptionLabelLocaleID(nameof(ModSettings.BoostAmount)), "Boost Amount ($)" },
@@ -103,7 +103,7 @@ namespace BudgetBooster.Localization
                 { _settings.GetOptionDescLocaleID(nameof(ModSettings.MaxBoostPerCycle)), "Maximum amount of money that can be added in a single update cycle." },
 
                 { _settings.GetOptionLabelLocaleID(nameof(ModSettings.UpdateInterval)), "Update Interval" },
-                { _settings.GetOptionDescLocaleID(nameof(ModSettings.UpdateInterval)), "How often boosts are applied (in-game time): 16 = ~2 hours, 256 = ~1 day, 1024 = ~4 days" },
+                { _settings.GetOptionDescLocaleID(nameof(ModSettings.UpdateInterval)), "Simulation ticks between boost checks. A full in-game day is 262,144 ticks, so 16 is about 5 in-game seconds, 256 about 1.4 minutes, and 1024 about 5.6 minutes." },
 
                 { _settings.GetOptionLabelLocaleID(nameof(ModSettings.ResetSettings)), "Reset to Defaults" },
                 { _settings.GetOptionDescLocaleID(nameof(ModSettings.ResetSettings)), "Reset all Budget Booster settings to their default values." },
@@ -113,7 +113,7 @@ namespace BudgetBooster.Localization
                 { _settings.GetOptionGroupLocaleID(ModSettings.GroupDebug), "Debug & Diagnostics" },
 
                 { _settings.GetOptionLabelLocaleID(nameof(ModSettings.DebugMode)), "Enable Debug Mode" },
-                { _settings.GetOptionDescLocaleID(nameof(ModSettings.DebugMode)), "Enable detailed logging for troubleshooting. Check Player.log for output." },
+                { _settings.GetOptionDescLocaleID(nameof(ModSettings.DebugMode)), "Enable detailed logging for troubleshooting. Output goes to Logs\\Budget Booster.log." },
 
                 { _settings.GetOptionLabelLocaleID(nameof(ModSettings.LogBoostCycles)), "Log Boost Cycles" },
                 { _settings.GetOptionDescLocaleID(nameof(ModSettings.LogBoostCycles)), "Log detailed information every time a boost is applied." },
@@ -122,7 +122,7 @@ namespace BudgetBooster.Localization
                 { _settings.GetOptionDescLocaleID(nameof(ModSettings.LogGameState)), "Periodically log game state including current balance." },
 
                 { _settings.GetOptionLabelLocaleID(nameof(ModSettings.RunDiagnostics)), "Run Diagnostics" },
-                { _settings.GetOptionDescLocaleID(nameof(ModSettings.RunDiagnostics)), "Run a diagnostic check and log detailed system status to Player.log." },
+                { _settings.GetOptionDescLocaleID(nameof(ModSettings.RunDiagnostics)), "Run a diagnostic check and write detailed system status to Logs\\Budget Booster.log." },
 
                 { _settings.GetOptionLabelLocaleID(nameof(ModSettings.ReloadBoostLogic)), "Reload Boost Logic" },
                 { _settings.GetOptionDescLocaleID(nameof(ModSettings.ReloadBoostLogic)), "Reload the boost calculation from disk without restarting the game. Intended for mod development: rebuild BudgetBooster.Logic.dll, then click this. Your settings and statistics are unaffected." },

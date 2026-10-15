@@ -159,7 +159,7 @@ namespace BudgetBooster
             BoostMode = BoostModeType.AutoBalance;
             BoostAmount = 250000;      // $250K boost
             TargetSurplus = 100000;    // Keep $100K surplus
-            UpdateInterval = 512;       // ~2 days between checks
+            UpdateInterval = 512;       // ~2.8 in-game minutes between checks
             MaxBoostPerCycle = 1000000; // Max $1M per cycle
             EnableNotifications = true;
             NotificationVerbosity = NotificationLevel.Minimal;
@@ -175,7 +175,7 @@ namespace BudgetBooster
             Enabled = true;
             BoostMode = BoostModeType.FixedBoost;
             BoostAmount = 5000000;      // $5M boost
-            UpdateInterval = 64;         // Very frequent (~6 hours)
+            UpdateInterval = 64;         // Very frequent (~21 in-game seconds)
             MaxBoostPerCycle = 50000000; // Max $50M per cycle
             EnableNotifications = false; // Don't spam notifications
             ApplyAndSave();
@@ -190,7 +190,7 @@ namespace BudgetBooster
             BoostMode = BoostModeType.Percentage;
             BoostAmount = 500000;       // Base $500K for percentage calc
             BoostPercentage = 25;       // 25% of base = $125K per cycle
-            UpdateInterval = 256;        // ~1 day between checks
+            UpdateInterval = 256;        // ~1.4 in-game minutes between checks
             MaxBoostPerCycle = 5000000;  // Max $5M per cycle
             EnableNotifications = true;
             NotificationVerbosity = NotificationLevel.Normal;
@@ -206,7 +206,7 @@ namespace BudgetBooster
             BoostMode = BoostModeType.AutoBalance;
             BoostAmount = 50000;        // Small $50K boost
             TargetSurplus = 0;          // Only when at $0 or negative
-            UpdateInterval = 256;        // ~1 day between checks
+            UpdateInterval = 256;        // ~1.4 in-game minutes between checks
             MaxBoostPerCycle = 500000;   // Max $500K per cycle
             EnableNotifications = true;
             NotificationVerbosity = NotificationLevel.Detailed;
